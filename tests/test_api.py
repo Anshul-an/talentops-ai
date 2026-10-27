@@ -62,3 +62,9 @@ def test_candidate_notes_crud(client):
     res_list = client.get("/api/candidates/1/notes")
     assert res_list.status_code == 200
     assert len(res_list.json()["notes"]) >= 1
+
+
+def test_candidate_status_update(client):
+    res = client.patch("/api/candidates/1/status", json={"status": "Screened - AI Fit", "note": "Verified manually"})
+    assert res.status_code == 200
+    assert res.json()["updated"] is True
