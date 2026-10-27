@@ -82,7 +82,7 @@ def _scripted_turn(cand: dict, session: dict, user_message: str) -> dict[str, An
         session[_field(last)] = user_message.strip()
 
     missing = [q for q, _ in QUESTIONS if not session.get(_field(q))]
-    if not asked and user_message.lower() in {"hi", "hello", "hey", "start"}:
+    if not asked and not session.get("employment_status") and user_message.lower() in {"hi", "hello", "hey", "start"}:
         missing = [q for q, _ in QUESTIONS if not session.get(_field(q))]
 
     if missing:
