@@ -191,6 +191,14 @@ def get_job_detail(jid: int) -> dict:
     return {"job": job}
 
 
+@app.patch("/api/jobs/{jid}")
+def patch_job(jid: int, payload: dict) -> dict:
+    if not db.get_job(jid):
+        raise HTTPException(404, "Job not found")
+    db.update_job(jid, payload.get("title"), payload.get("client_name"), payload.get("jd_text"))
+    return {"job": db.get_job(jid)}
+
+
 @app.post("/jobs")
 @app.post("/api/jobs")
 def create_job(body: JobIn) -> dict:

@@ -499,3 +499,21 @@ def soft_delete_candidate(candidate_id: int) -> bool:
     with connect() as conn:
         cur = conn.execute("UPDATE candidates SET parser_engine = 'deleted' WHERE id = ?", (candidate_id,))
         return cur.rowcount > 0
+
+
+def update_job(jid: int, title: Optional[str] = None, client_name: Optional[str] = None, jd_text: Optional[str] = None) -> bool:
+    sets, params = [], []
+    if title:
+        sets.append("title = ?")
+        params.append(title)
+    if client_name:
+        sets.append("client_name = ?")
+        params.append(client_name)
+    if jd_text:
+        sets.append("jd_text = ?")
+        params.append(jd_text)
+    if not sets:
+        return False
+    params.append(jid)
+    execute(f"UPDATE jobs SET {', '.join(sets)} WHERE id = ?", tuple(params))
+    return True
