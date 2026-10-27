@@ -6,6 +6,9 @@ import pandas as pd
 
 from app import db
 from app.config import MOCK_RECRUITERS
+from app.logging_config import get_logger
+
+logger = get_logger("excel_export")
 
 
 def build_workbook() -> bytes:
@@ -76,6 +79,18 @@ def build_workbook() -> bytes:
         )
     if not channel_rows:
         channel_rows = [{"Channel": "Naukri", "Sourcing Spend (INR)": 45000, "Candidates Sourced": 0, "Qualified (AI Fit)": 0, "Cost per Qualified": None}]
+
+    logger.info(
+        f"Exporting Excel workbook: {len(pipeline_rows)} pipeline rows, "
+        f"{len(kpi_rows)} recruiter rows, {len(channel_rows)} channel rows",
+        extra={
+            "extra_data": {
+                "pipeline_count": len(pipeline_rows),
+                "kpi_count": len(kpi_rows),
+                "channel_count": len(channel_rows),
+            }
+        },
+    )
 
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as writer:
