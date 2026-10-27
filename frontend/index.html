@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TalentOps AI — Virtuous demo</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div>
+      <p class="eyebrow">Virtuous · AI Intern prototype</p>
+      <h1>TalentOps AI</h1>
+      <p class="sub">Resume ingest → parse &amp; fitment → screening desk → MIS</p>
+    </div>
+    <div class="health-wrap">
+      <div class="health" id="health">Checking engine…</div>
+      <p class="setup-link">Free LLM workarounds: docs/KEYS_AND_SETUP.md</p>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab on" data-tab="pipeline">Pipeline</button>
+    <button class="tab" data-tab="score">Score vs JD</button>
+    <button class="tab" data-tab="screen">Screening desk</button>
+    <button class="tab" data-tab="dash">Executive MIS</button>
+  </nav>
+
+  <main>
+    <section id="pipeline" class="panel on">
+      <div class="row">
+        <div class="card">
+          <h2>1. Ingest resumes</h2>
+          <p>Load 10 fictional CVs (PDF / DOCX / messy TXT) or upload your own. No job-board scraping.</p>
+          <div class="actions">
+            <button type="button" id="ingest">Ingest sample resumes</button>
+            <label class="filebtn">Upload files
+              <input id="files" type="file" multiple accept=".pdf,.docx,.txt,.doc" />
+            </label>
+          </div>
+          <pre id="ingestLog" class="log"></pre>
+        </div>
+        <div class="card grow">
+          <h2>Candidates</h2>
+          <p class="muted">Click a row to open the screening desk.</p>
+          <label>Filter status
+            <select id="statusFilter">
+              <option value="">All</option>
+              <option value="Screened - AI Fit">Screened – AI Fit</option>
+              <option value="Sourced - Below Threshold">Below threshold</option>
+            </select>
+          </label>
+          <div id="candTable" class="table wrap"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="score" class="panel">
+      <div class="card">
+        <h2>2. Semantic fitment</h2>
+        <p>Score parsed candidates against a mandate. ≥70 is tagged <strong>Screened – AI Fit</strong>.</p>
+        <div class="actions">
+          <select id="jobSelect"></select>
+          <button type="button" id="runScore">Score all candidates</button>
+        </div>
+        <pre id="jdPreview" class="log muted"></pre>
+        <div id="scoreOut" class="table wrap"></div>
+      </div>
+    </section>
+
+    <section id="screen" class="panel">
+      <div class="row">
+        <div class="card grow">
+          <h2>3. Pre-screen chat</h2>
+          <p class="muted">Simulated web chat (not WhatsApp). Use the chips if you do not want to type.</p>
+          <label>Candidate
+            <select id="chatCand"></select>
+          </label>
+          <div class="chips" id="chips"></div>
+          <div id="chatBox" class="chat"></div>
+          <form id="chatForm" class="composer">
+            <input id="chatInput" placeholder="Type as the candidate…" autocomplete="off" />
+            <button type="submit">Send</button>
+          </form>
+          <div class="actions">
+            <button type="button" class="ghost" id="btnDossier">Preview submission dossier</button>
+          </div>
+          <pre id="dossier" class="log" hidden></pre>
+        </div>
+        <div class="card">
+          <h2>Calendar (mocked)</h2>
+          <p>Click a slot to book. Real Google / M365 free-busy would replace this list.</p>
+          <div id="slots"></div>
+          <h3>Booked interviews</h3>
+          <div id="ivTable" class="table wrap"></div>
+          <div class="actions">
+            <button type="button" class="ghost" id="btnReminders">Dispatch queued reminders (mock WhatsApp)</button>
+          </div>
+          <pre id="reminderLog" class="log"></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="dash" class="panel">
+      <div class="kpis" id="kpis"></div>
+      <div class="row">
+        <div class="card grow">
+          <h2>Funnel &amp; channels</h2>
+          <div id="funnel"></div>
+        </div>
+        <div class="card">
+          <h2>Excel MIS</h2>
+          <p>Three sheets: Master Daily Pipeline, Recruiter KPI Leaderboard, Channel Performance Matrix.</p>
+          <a class="button" href="/api/export/excel">Download TalentOps_MIS.xlsx</a>
+          <p class="muted">KPI hours are mocked Kredily / TeamLogger. Pipeline rows come from SQLite.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer>
+    Scoped demo — CEIPAL, WhatsApp, Tally, Kredily, TeamLogger, and CredFlow are documented, not live.
+    Keys: <a href="https://console.anthropic.com/settings/keys">Anthropic console</a> · <span class="muted">see docs/KEYS_AND_SETUP.md</span>
+  </footer>
+  <script src="/assets/app.js"></script>
+</body>
+</html>
