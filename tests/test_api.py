@@ -48,3 +48,9 @@ def test_search_candidate_by_name(client):
     res = client.get("/api/candidates/search?q=Ananya")
     assert res.status_code == 200
     assert "candidates" in res.json()
+
+
+def test_search_candidate_by_skill(client):
+    res = client.get("/api/candidates/search?q=Python")
+    assert res.status_code == 200
+    assert "count" in res.json()
