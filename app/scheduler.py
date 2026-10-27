@@ -106,7 +106,7 @@ def dispatch_reminders(interview_id: Optional[int] = None) -> dict[str, Any]:
     return {"sent": count, "reminders": db.list_reminders(interview_id)}
 
 
-def confirm(interview_id: int, action: str, new_slot_id: Optional[str] = None) -> dict[str, Any]:
+def confirm(interview_id: int, action: str, new_slot_id: Optional[str] = None, reason: Optional[str] = None) -> dict[str, Any]:
     row = db.fetchone("SELECT * FROM interviews WHERE id = ?", (interview_id,))
     if not row:
         logger.warning(f"Confirmation failed: interview #{interview_id} not found")
