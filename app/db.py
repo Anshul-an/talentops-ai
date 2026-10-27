@@ -572,3 +572,9 @@ def search_candidates_advanced(terms: list[str]) -> list[dict[str, Any]]:
     ORDER BY c.id DESC
     """
     return fetchall(sql, tuple(params))
+
+
+def delete_candidate_note(note_id: int) -> bool:
+    with connect() as conn:
+        cur = conn.execute("DELETE FROM notes WHERE id = ?", (note_id,))
+        return cur.rowcount > 0
