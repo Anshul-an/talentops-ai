@@ -5,6 +5,9 @@ from datetime import datetime, timezone
 from typing import Any, Iterator, Optional
 
 from app import config
+from app.logging_config import get_logger
+
+logger = get_logger("db")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS candidates (
@@ -158,7 +161,10 @@ def find_duplicate(email: Optional[str], phone: Optional[str], linkedin_url: Opt
     if not clauses:
         return None
     sql = f"SELECT * FROM candidates WHERE {' OR '.join(clauses)} ORDER BY id DESC LIMIT 1"
-    return fetchone(sql, tuple(params))
+    match = fetchone(sql, tuple(params))
+    if match:
+        logger.info(f"Dedup match found: candidate matches existing #{match['id']} (email={match.get('email')})")
+    return match
 
 
 def upsert_candidate(payload: dict[str, Any]) -> tuple[int, str]:
@@ -200,11 +206,13 @@ def upsert_candidate(payload: dict[str, Any]) -> tuple[int, str]:
         if sets:
             params.append(existing["id"])
             execute(f"UPDATE candidates SET {', '.join(sets)} WHERE id = ?", tuple(params))
+        logger.info(f"Upsert candidate: merged fields into existing candidate #{existing['id']}")
         return existing["id"], "merged"
     cols = ", ".join(fields)
     placeholders = ", ".join("?" for _ in fields)
     values = tuple(_serialize(payload.get(f)) for f in fields)
     cid = execute(f"INSERT INTO candidates ({cols}) VALUES ({placeholders})", values)
+    logger.info(f"Upsert candidate: inserted new candidate #{cid} ('{payload.get('full_name')}')")
     return cid, "inserted"
 
 
