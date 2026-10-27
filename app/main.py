@@ -66,6 +66,16 @@ async def log_requests(request: Request, call_next):
     return response
 
 
+@app.get("/api/version")
+def version() -> dict:
+    import subprocess
+    try:
+        sha = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
+    except Exception:
+        sha = "unknown"
+    return {"name": "TalentOps AI", "version": "0.1.0", "git_sha": sha}
+
+
 @app.get("/api/health")
 @app.get("/health")
 def health() -> dict:
