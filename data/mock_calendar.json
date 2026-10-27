@@ -1,0 +1,54 @@
+{
+  "timezone": "Asia/Kolkata",
+  "meeting_link": "https://meet.google.com/talentops-demo",
+  "slots": [
+    {
+      "id": "slot-mon-1000",
+      "label": "Mon 3 Nov, 10:00–10:45 IST",
+      "start": "2026-11-03T10:00:00+05:30",
+      "end": "2026-11-03T10:45:00+05:30",
+      "panel": "Internal recruiter + hiring manager",
+      "channel": "Google Meet"
+    },
+    {
+      "id": "slot-mon-1500",
+      "label": "Mon 3 Nov, 15:00–15:45 IST",
+      "start": "2026-11-03T15:00:00+05:30",
+      "end": "2026-11-03T15:45:00+05:30",
+      "panel": "Internal recruiter + hiring manager",
+      "channel": "Google Meet"
+    },
+    {
+      "id": "slot-tue-1130",
+      "label": "Tue 4 Nov, 11:30–12:15 IST",
+      "start": "2026-11-04T11:30:00+05:30",
+      "end": "2026-11-04T12:15:00+05:30",
+      "panel": "Client interview panel (L1)",
+      "channel": "Microsoft Teams"
+    },
+    {
+      "id": "slot-tue-1630",
+      "label": "Tue 4 Nov, 16:30–17:15 IST",
+      "start": "2026-11-04T16:30:00+05:30",
+      "end": "2026-11-04T17:15:00+05:30",
+      "panel": "Client interview panel (L1)",
+      "channel": "Zoom"
+    },
+    {
+      "id": "slot-wed-0930",
+      "label": "Wed 5 Nov, 09:30–10:15 IST",
+      "start": "2026-11-05T09:30:00+05:30",
+      "end": "2026-11-05T10:15:00+05:30",
+      "panel": "Practice lead pre-brief",
+      "channel": "Google Meet"
+    },
+    {
+      "id": "slot-wed-1400",
+      "label": "Wed 5 Nov, 14:00–14:45 IST",
+      "start": "2026-11-05T14:00:00+05:30",
+      "end": "2026-11-05T14:45:00+05:30",
+      "panel": "Client interview panel (L2)",
+      "channel": "Google Meet"
+    }
+  ]
+}

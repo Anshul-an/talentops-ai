@@ -1,0 +1,54 @@
+[
+  {
+    "recruiter_name": "Aisha Khan",
+    "practice": "Technology Search",
+    "login_hours": 8.2,
+    "productive_hours": 6.4,
+    "profiles_added": 18,
+    "submissions": 7,
+    "first_rounds": 4,
+    "second_rounds": 2,
+    "final_rounds": 1,
+    "selections": 1,
+    "closures": 0
+  },
+  {
+    "recruiter_name": "Rahul Menon",
+    "practice": "CXO / Leadership",
+    "login_hours": 7.9,
+    "productive_hours": 7.1,
+    "profiles_added": 9,
+    "submissions": 5,
+    "first_rounds": 5,
+    "second_rounds": 3,
+    "final_rounds": 2,
+    "selections": 1,
+    "closures": 1
+  },
+  {
+    "recruiter_name": "Sneha Kulkarni",
+    "practice": "BFSI Talent",
+    "login_hours": 8.5,
+    "productive_hours": 5.0,
+    "profiles_added": 22,
+    "submissions": 3,
+    "first_rounds": 1,
+    "second_rounds": 0,
+    "final_rounds": 0,
+    "selections": 0,
+    "closures": 0
+  },
+  {
+    "recruiter_name": "Vivek Sharma",
+    "practice": "Product & Design",
+    "login_hours": 8.0,
+    "productive_hours": 6.8,
+    "profiles_added": 14,
+    "submissions": 6,
+    "first_rounds": 3,
+    "second_rounds": 2,
+    "final_rounds": 1,
+    "selections": 0,
+    "closures": 0
+  }
+]
