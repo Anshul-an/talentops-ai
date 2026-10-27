@@ -166,3 +166,8 @@ class DetailedHealth(BaseModel):
     ok: bool = True
     llm: dict[str, Any] = Field(default_factory=dict)
     database: DatabaseCounts
+
+
+class BulkScoreRequest(ScoreRequest):
+    batch_name: Optional[str] = None
+    priority: Optional[str] = "normal"
