@@ -483,3 +483,7 @@ def add_candidate_note(candidate_id: int, note: str, author: str = "Recruiter") 
     )
     logger.info(f"Added note #{nid} for candidate #{candidate_id} by {author}")
     return nid
+
+
+def get_candidate_notes(candidate_id: int) -> list[dict[str, Any]]:
+    return fetchall("SELECT * FROM notes WHERE candidate_id = ? ORDER BY id DESC", (candidate_id,))

@@ -140,6 +140,11 @@ def add_note(cid: int, payload: dict) -> dict:
     return {"id": nid, "candidate_id": cid, "note": note, "author": author}
 
 
+@app.get("/api/candidates/{cid}/notes")
+def list_notes(cid: int) -> dict:
+    return {"candidate_id": cid, "notes": db.get_candidate_notes(cid)}
+
+
 @app.get("/candidates/{cid}")
 @app.get("/api/candidates/{cid}")
 def candidate_detail(cid: int) -> dict:
