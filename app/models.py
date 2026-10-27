@@ -80,3 +80,16 @@ class InterviewConfirm(BaseModel):
     slot_id: Optional[str] = None
     action: str = "confirm"  # confirm | reschedule | noshow
     new_slot_id: Optional[str] = None
+
+
+class NoteIn(BaseModel):
+    note: str = Field(..., min_length=1)
+    author: Optional[str] = "Recruiter"
+
+
+class CandidateNote(BaseModel):
+    id: int
+    candidate_id: int
+    note: str
+    author: Optional[str] = "Recruiter"
+    created_at: Optional[str] = None
