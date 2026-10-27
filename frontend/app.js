@@ -73,6 +73,7 @@ async function refreshCandidates() {
   const searchTerm = ($("#candSearch")?.value || "").toLowerCase().trim();
   const q = status ? `?status=${encodeURIComponent(status)}` : "";
   const data = await api(`/api/candidates${q}`);
+  if ($("#pipelineBadge")) $("#pipelineBadge").textContent = data.candidates.length;
   const rows = data.candidates.filter(c => !searchTerm || (c.full_name && c.full_name.toLowerCase().includes(searchTerm)) || (c.skills && c.skills.toLowerCase().includes(searchTerm)))
     .map(
       (c) => `<tr data-cid="${c.id}">
