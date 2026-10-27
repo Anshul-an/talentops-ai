@@ -517,3 +517,10 @@ def update_job(jid: int, title: Optional[str] = None, client_name: Optional[str]
     params.append(jid)
     execute(f"UPDATE jobs SET {', '.join(sets)} WHERE id = ?", tuple(params))
     return True
+
+
+def get_interview(iid: int) -> Optional[dict[str, Any]]:
+    return fetchone(
+        "SELECT i.*, c.full_name, c.email FROM interviews i LEFT JOIN candidates c ON c.id = i.candidate_id WHERE i.id = ?",
+        (iid,),
+    )

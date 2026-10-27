@@ -241,6 +241,15 @@ def chat(candidate_id: int, body: ChatIn) -> dict:
         raise HTTPException(404, str(exc)) from exc
 
 
+@app.get("/api/interviews/{iid}")
+def get_interview_detail(iid: int) -> dict:
+    iv = db.get_interview(iid)
+    if not iv:
+        raise HTTPException(404, "Interview not found")
+    reminders = db.list_reminders(iid)
+    return {"interview": iv, "reminders": reminders}
+
+
 @app.get("/interviews")
 @app.get("/api/interviews")
 def interviews() -> dict:
