@@ -183,6 +183,14 @@ def list_jobs() -> dict:
     return {"jobs": db.list_jobs()}
 
 
+@app.get("/api/jobs/{jid}")
+def get_job_detail(jid: int) -> dict:
+    job = db.get_job(jid)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    return {"job": job}
+
+
 @app.post("/jobs")
 @app.post("/api/jobs")
 def create_job(body: JobIn) -> dict:
