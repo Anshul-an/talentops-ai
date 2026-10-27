@@ -158,6 +158,7 @@ def heuristic_parse(raw: str) -> dict[str, Any]:
     if skills_block:
         skills = [s.strip() for s in re.split(r"[,•|/]", skills_block) if 1 < len(s.strip()) < 40][:20]
     github = _first(re.findall(r"https?://(?:www\.)?github\.com/[A-Za-z0-9_-]+", raw, re.I))
+    portfolio = _first(re.findall(r"https?://[A-Za-z0-9.-]+\.(?:dev|me|io|design)/?", raw, re.I))
     education = _capture(raw, r"education[:\s]+([^\n]+)")
     previous = re.findall(r"(?:previous employers|worked at)[:\s]+([^\n]+)", raw, re.I)
     return {
@@ -168,6 +169,7 @@ def heuristic_parse(raw: str) -> dict[str, Any]:
         "phone": phone,
         "linkedin_url": linkedin,
         "github_url": github,
+        "portfolio_url": portfolio,
         "total_experience_years": exp,
         "relevant_experience_years": exp,
         "current_ctc": ctc,
