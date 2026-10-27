@@ -86,6 +86,30 @@ CREATE TABLE IF NOT EXISTS screening_sessions (
   updated_at TEXT
 );
 
+
+CREATE TABLE IF NOT EXISTS notes (
+  id INTEGER PRIMARY KEY,
+  candidate_id INTEGER REFERENCES candidates(id),
+  note TEXT,
+  author TEXT,
+  created_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS tags (
+  id INTEGER PRIMARY KEY,
+  candidate_id INTEGER REFERENCES candidates(id),
+  tag TEXT,
+  created_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS timeline (
+  id INTEGER PRIMARY KEY,
+  candidate_id INTEGER REFERENCES candidates(id),
+  status TEXT,
+  note TEXT,
+  created_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS reminders (
   id INTEGER PRIMARY KEY,
   interview_id INTEGER REFERENCES interviews(id),
@@ -436,3 +460,17 @@ def mark_reminders_sent(interview_id: Optional[int] = None) -> int:
             (now,),
         )
         return cur.rowcount
+
+
+def search_candidates(query: str) -> list[dict[str, Any]]:
+    q = f"%{query.strip()}%"
+    sql = """
+    SELECT c.*, s.fitment_score AS latest_score, s.status AS latest_status
+    FROM candidates c
+    LEFT JOIN scores s ON s.id = (
+        SELECT id FROM scores WHERE candidate_id = c.id ORDER BY id DESC LIMIT 1
+    )
+    WHERE c.full_name LIKE ? OR c.skills LIKE ? OR c.current_company LIKE ? OR c.email LIKE ?
+    ORDER BY c.id DESC
+    """
+    return fetchall(sql, (q, q, q, q))

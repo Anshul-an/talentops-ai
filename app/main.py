@@ -123,6 +123,13 @@ def candidates(status: Optional[str] = None, source: Optional[str] = None) -> di
     return {"candidates": cands}
 
 
+@app.get("/api/candidates/search")
+def search_candidates(q: str = Query(..., min_length=1)) -> dict:
+    results = db.search_candidates(q)
+    logger.info(f"Candidate search for '{q}' returned {len(results)} matches")
+    return {"query": q, "count": len(results), "candidates": results}
+
+
 @app.get("/candidates/{cid}")
 @app.get("/api/candidates/{cid}")
 def candidate_detail(cid: int) -> dict:
