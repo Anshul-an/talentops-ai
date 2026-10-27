@@ -328,6 +328,14 @@ def dispatch_reminders(iid: int) -> dict:
     return scheduler.dispatch_reminders(iid)
 
 
+@app.get("/api/reminders")
+def list_all_reminders(status: Optional[str] = None) -> dict:
+    items = db.list_reminders()
+    if status:
+        items = [r for r in items if r.get("status") == status]
+    return {"reminders": items, "count": len(items)}
+
+
 @app.post("/api/reminders/dispatch")
 def dispatch_all_reminders() -> dict:
     return scheduler.dispatch_reminders()
