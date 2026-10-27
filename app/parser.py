@@ -79,6 +79,7 @@ def _docx_text(path: Path) -> str:
 
 
 def parse_resume(path: Path, source_channel: str = "Direct upload") -> dict[str, Any]:
+    """Parse resume file (PDF, DOCX, TXT) into normalized hiring fields with engine fallback."""
     raw = _normalize_spacing(extract_text(path))
     if has_llm():
         try:
