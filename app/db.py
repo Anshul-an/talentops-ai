@@ -619,3 +619,7 @@ def unarchive_job(jid: int) -> bool:
     with connect() as conn:
         cur = conn.execute("UPDATE jobs SET client_name = replace(client_name, ' [ARCHIVED]', '') WHERE id = ?", (jid,))
         return cur.rowcount > 0
+
+
+def get_interviews_for_candidate(candidate_id: int) -> list[dict[str, Any]]:
+    return fetchall("SELECT * FROM interviews WHERE candidate_id = ? ORDER BY id DESC", (candidate_id,))
