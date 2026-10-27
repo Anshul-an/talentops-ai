@@ -975,6 +975,516 @@ If only one working day is available before submission, fix in this order:
 
 ---
 
+# Panel 4 — Human Lens Review
+
+> **Panel 4 experts:** End User / Candidate-Experience Expert (20+ yrs UX, conversational design, HR-tech) · Hiring Manager / Interviewer Expert (20+ yrs recruiting ops, technical panel lead, intern evaluation)
+> **Scope:** Does the chat feel natural to the *candidate*? Does the repo make a strong impression in the *first 5 minutes* of a Virtuous interview? Is the demo script tight enough to run live without dead air?
+> **Input artefacts read:** `app/chat_agent.py`, `frontend/index.html`, `frontend/app.js`, `docs/DEMO_SCRIPT.md`, `docs/CHAT_WALKTHROUGH.md`, `README.md`, full review of chat UX rendering in the browser.
+
+---
+
+## Panel 4 — Executive Summary
+
+**Candidate-experience view:** The scripted fallback dialog reads more like a form interrogation than a human conversation. Questions are technically correct but tonally HR-jargon heavy ("buyout negotiable vs what is printed on paper" to a nervous first-contact candidate), the system introduces itself as the "TalentOps screening desk" rather than by the company name, there is no acknowledgement of the candidate's *answers* (just "Thanks — noted"), and there is zero graceful handling of ambiguous, multi-part, or off-script replies. Candidates who don't follow the exact happy-path chip sequence will get into a state where the scripted fallback loops silently or moves on without confirming what it captured.
+
+**Hiring manager / interview view:** The repo is impressive and the scoping judgment is very good, but the demo script has three "dead air" moments — the port is wrong, the chip answers are only in `CHAT_WALKTHROUGH.md` (not the demo script), and there is no "here's what to say if something breaks" fallback line. An interviewer asking "walk me through what's real vs what you'd build next week" will get a crisp answer; an interviewer who asks "show me a candidate who *failed* screening" will cause the demo to stall because no below-threshold candidate gets routed into the chat, and there is no pre-loaded failing scenario. These are fixable in 30 minutes and would meaningfully upgrade the demo's resilience under live questioning.
+
+---
+
+## Panel 4 — Issue List (Prioritised)
+
+---
+
+### [BLOCKER] — Will visibly break the demo or embarrass on first run
+
+---
+
+#### HL-B1 · `DEMO_SCRIPT.md` Step 1 opens `http://127.0.0.1:8000` — server won't start on that port on this machine; evaluator sees a blank page or browser error
+**Raised by:** Hiring Manager Expert, Technical Writer (Panel 3 PQ-B2 cross-reference)
+
+The demo script's very first instruction is to open `http://127.0.0.1:8000`. On this machine port 8000 is blocked (WinError 10013). The correct port is 8080. Any live interview where the interviewer opens the URL from Step 1 and sees "This site can't be reached" will consume the first 90 seconds of a 15-minute demo in troubleshooting.
+
+This is the single most damaging issue for the interview experience because it happens in the opening 10 seconds.
+
+**Fix (1 minute):** Change `DEMO_SCRIPT.md` line 3 from:
+> `Open http://127.0.0.1:8000`
+
+To:
+> `Open http://127.0.0.1:8080 (or 8000 on non-Windows; see Quick Start)`
+
+And change `app.js` line 52 error message from `"start uvicorn on port 8000"` to `"start uvicorn on port 8080"`.
+
+---
+
+#### HL-B2 · Demo has no "failed candidate" scenario — interviewer question "show me someone who didn't pass" has no answer
+**Raised by:** Hiring Manager Expert, Candidate-Experience Expert
+
+The demo script goes: ingest → score → screen Ananya (who passes) → book slot. The entire happy path. A Virtuous interviewer who asks "what does the system do when a candidate isn't a fit?" or "can you show me a below-threshold candidate?" will get one of two bad outcomes:
+1. The presenter clicks Vikram in the pipeline table (score below threshold), navigates to screening desk — and discovers there is nothing pre-loaded in the chat for Vikram. The chat box is empty, the chips are Ananya's answers, and the demo stalls.
+2. The presenter improvises: "well, you can see his score is lower" — which is weak compared to "let me show you the system actively rejecting him with an explanation."
+
+The `DEMO_SCRIPT.md` should explicitly describe one "low fit" moment as a scripted beat, not just gesture at score numbers.
+
+**Fix:** Add to `DEMO_SCRIPT.md` Step 3:
+> *"Point at Vikram (Finance background, score ~28). Note: below the 70-point threshold — tagged 'Sourced - Below Threshold'. The chat desk won't advance him to scheduling; the system surfaces the gap summary instead."*
+
+And add to `CHAT_WALKTHROUGH.md` a two-line "Rejection path" section explaining what the agent says if `qualified=False` after all questions are captured.
+
+---
+
+### [HIGH] — Significant experience problems; fix before any demo or interview
+
+---
+
+#### HL-H1 · Screening question Q_NOTICE is recruiter-speak, not candidate language — will confuse or alarm a real applicant
+**Raised by:** Candidate-Experience Expert
+
+`chat_agent.py` line 11:
+```python
+Q_NOTICE = "What is your actual last working day / notice period, and is a buyout negotiable vs what is printed on paper?"
+```
+
+Breaking this down from the candidate's seat:
+- **"actual last working day vs what is printed on paper"** — implies you suspect the candidate is lying about their notice period before they've said anything. Immediately adversarial.
+- **"buyout negotiable"** — industry jargon that early-career candidates (and many mid-career ones) won't understand without context. Is the company buying out *my* notice? Am I buying *myself* out? From whom?
+- **"vs what is printed on paper"** — implies the candidate might misrepresent their contract terms. This phrasing belongs in a recruiter's internal notes, not in a first-contact message to the candidate.
+
+The LLM mode buffers this somewhat because the model will rephrase. But the scripted fallback delivers this verbatim.
+
+**Fix (candidate-friendly rephrasing):**
+```python
+Q_NOTICE = "What's your notice period, and do you have any flexibility on the start date if the right offer comes through?"
+```
+This captures the same data (notice length + buyout possibility) without the confrontational subtext.
+
+---
+
+#### HL-H2 · Agent introduces itself as "TalentOps screening desk," not as Virtuous — candidate has no trust anchor
+**Raised by:** Candidate-Experience Expert
+
+`chat_agent.py` scripted fallback, line 105-108:
+```python
+reply = (
+    f"Hi {name}, this is the TalentOps screening desk. "
+    f"I'll confirm four points, then we can lock an interview slot. {qtext}"
+)
+```
+
+A real candidate receiving this message cold would not recognise "TalentOps." Their resume went to "Virtuous Advisors." They're now talking to something called "TalentOps screening desk." The brand mismatch creates friction and distrust — candidates are already wary of automated screening.
+
+The CHAT_SYSTEM prompt also says "You are Virtuous' candidate pre-screening agent (demo)" — so the LLM gets the brand right, the scripted fallback does not.
+
+**Fix:**
+```python
+reply = (
+    f"Hi {name}, I'm reaching out from Virtuous Advisors' screening team. "
+    f"Quick check — I'll confirm four points and then we can look at interview slots. {qtext}"
+)
+```
+
+---
+
+#### HL-H3 · No acknowledgement of candidate's actual answer — "Thanks — noted" for every response is robotic and signals the bot isn't listening
+**Raised by:** Candidate-Experience Expert
+
+`chat_agent.py` line 110:
+```python
+reply = f"Thanks — noted. {qtext}"
+```
+
+This is the agent's transition phrase for questions 2, 3, and 4 in the scripted path. Every single transition is the same two words. A candidate who shares:
+> *"I've been at this company for 6 years, it's my first job out of college, notice is 60 days but my manager is supportive"*
+
+Receives: **"Thanks — noted. Please share current fixed + variable CTC and your expected CTC (annual, INR)."**
+
+This is worse than a paper form. A paper form doesn't pretend to be having a conversation. The lack of any reflection ("Got it — 60 days, good to know") signals immediately that no human is reading the answers, which erodes any goodwill the candidate had going in.
+
+The LLM path handles this well (the model reflects back the answer). The scripted fallback needs at minimum a rotating acknowledgement set.
+
+**Fix:**
+```python
+ACKS = [
+    "Got it, thanks.",
+    "Noted — appreciated.",
+    "Thanks for sharing that.",
+    "Perfect, that's helpful.",
+]
+# Use: random.choice(ACKS) + f" {qtext}"
+```
+
+---
+
+#### HL-H4 · Chat input placeholder says "Type as the candidate…" — demo-only framing leaks to the UI; a real candidate would be confused
+**Raised by:** Candidate-Experience Expert, Hiring Manager Expert
+
+`index.html` line 85:
+```html
+<input id="chatInput" placeholder="Type as the candidate…" autocomplete="off" />
+```
+
+In the context of a live demo shown to an interviewer, this is actually fine — it tells the presenter they should be playing the candidate role. But the section header (`<h2>3. Pre-screen chat</h2>`) and the label (`<p class="muted">Simulated web chat (not WhatsApp). Use the chips if you do not want to type.</p>`) both break the fiction of showing a candidate-facing UI.
+
+From a Hiring Manager perspective: this is acceptable for a demo — the framing is honest. The issue is that the demo script (Step 4) says "Show Scheduled, slot gone, reminders queued" but does not explicitly tell the presenter to narrate the perspective shift ("I'm now playing the candidate here"). Without that narration, a non-technical interviewer may not understand why *they* are typing into a chat box as if they were the applicant.
+
+**Fix (demo script only — no code change needed):** Add to `DEMO_SCRIPT.md` Step 4, before the booking instruction:
+> *"Narrate: 'This is the recruiter view of the screening desk. The candidate would receive this conversation over WhatsApp — I'm simulating their replies using the answer chips.'"*
+
+---
+
+#### HL-H5 · Demo script Step 4 says "click Ananya in the table" then "pick her in the dropdown" — two different gestures, one instruction, causes confusion
+**Raised by:** Hiring Manager Expert
+
+`DEMO_SCRIPT.md` Step 4:
+> `click Ananya in the table (or pick her in the dropdown)`
+
+This is the single step where the most interesting demo action happens (the actual chat), and the instruction is ambiguous. Which of two interactions should the presenter do? The pipeline table is on Tab 1 (Pipeline) and the dropdown is on Tab 3 (Screening desk). Clicking Ananya in the table correctly auto-switches to the Screening desk tab — but "or pick her in the dropdown" suggests these are equivalent, when the table-click is smoother for a live demo.
+
+More critically, the step says "Use the answer chips, then click **Book slot-mon-1500**" — but `slot-mon-1500` may not be available if the calendar was already booked in a previous demo run. There is no reset instruction, and a presenter who clicks "Book slot-mon-1500" on a depleted calendar will see "Could not book that slot: already booked" in the chat and have to explain why.
+
+**Fix to `DEMO_SCRIPT.md` Step 4:**
+> *"In the Pipeline tab, click Ananya's row — this auto-opens the Screening desk. Use the five answer chips in order. When 'qualified' triggers, the slot panel refreshes — click any available slot button (e.g. slot-mon-1500 if fresh). If slots are depleted, click **Clear chat** first to reset the session, then re-run the chips."*
+
+---
+
+#### HL-H6 · `DEMO_SCRIPT.md` is 8 lines; it covers none of the likely interviewer questions — no "what would you build next?" beat
+**Raised by:** Hiring Manager Expert
+
+The demo script is a mechanical walkthrough sequence, not a presentation guide. It tells the presenter *what to click* but not *what to say*. A strong internship demo has three layers:
+
+1. **Show** (what's on screen) ✅ covered
+2. **Tell** (narration of *why* each design decision was made) ❌ absent
+3. **Extend** (what you'd build next, with specificity) ❌ absent
+
+A Virtuous interviewer will almost certainly ask one of:
+- "Why did you pick FastAPI over Django?"
+- "What would you do differently with more time?"
+- "How would this connect to CEIPAL for real?"
+- "What's the cost to run this at our actual scale?"
+
+The demo script has no prepared answers for any of these. The `MODULE_4_6_NOTES.md` has excellent material for the CEIPAL/Tally question but the script doesn't reference it as a talking point — it just says "Open `docs/MODULE_4_6_NOTES.md`. Explain…" without giving the explanation.
+
+**Fix:** Expand `DEMO_SCRIPT.md` from 8 lines to ~40 lines, adding:
+- A "Narration points" column for each step (one sentence per beat of what to say, not just what to click)
+- A "Likely questions + prepared answers" section at the bottom (4-5 Q&A pairs)
+- A "If something breaks" section (one sentence per failure mode: server down, slots depleted, LLM timeout)
+
+---
+
+#### HL-H7 · No "Thank you for completing the screening" terminal message — chat ends on a system message about slot IDs
+**Raised by:** Candidate-Experience Expert
+
+When all four questions are captured and the candidate is qualified, the scripted fallback sends:
+```
+"All four qualification points are captured. If this looks aligned, reply with the slot id you'd like (e.g. slot-mon-1000) from the list I'll show, or type BOOK <slot-id>."
+```
+
+And after booking:
+```
+"Booked slot-mon-1500 (Mon 3:00 PM · Video call). Status: Scheduled. Calendar invite would be sent via Google/M365 here."
+```
+
+These are backend confirmation messages written for a developer, not a candidate closure message. A candidate completing a real screening deserves a warm close:
+> *"You're all set, [Name]! Your interview is confirmed for [date/time]. We'll send you a calendar invite and a reminder 24 hours before. Looking forward to speaking with you — the team at Virtuous Advisors."*
+
+The LLM path will generate something warmer naturally. The scripted fallback will not.
+
+**Fix:** Replace the booking confirmation in `_finalize()` (line 177):
+```python
+reply += (
+    f"\n\n✅ You're all set, {cand.get('full_name','').split()[0]}! "
+    f"Interview confirmed: {booked['label']}. "
+    f"A calendar invite and reminders (T-24h / T-2h / T-15m) will follow. "
+    f"The Virtuous team looks forward to speaking with you."
+)
+```
+
+---
+
+### [MEDIUM] — Noticeable friction; fix before a polished demo or external audience
+
+---
+
+#### HL-M1 · Chat chip answers are Ananya-specific — running the demo on any other candidate produces nonsensical answers
+**Raised by:** Candidate-Experience Expert, Hiring Manager Expert
+
+`app.js` line 4-10, the CHIPS array:
+```javascript
+const CHIPS = [
+  "hi",
+  "Employed at Meru Labs, not serving notice yet",
+  "30 days on paper, buyout possible",
+  "Current 24 LPA fixed, expected 32 LPA",
+  "Hybrid Bengaluru is fine, no relocation needed",
+];
+```
+
+These are hardcoded to match Ananya Sharma's fictional profile. If a demo presenter clicks on Rahul Gupta (who is listed as based in Noida), chips 5 says "Hybrid Bengaluru is fine" — which is incoherent for a Noida candidate. If an interviewer selects a different candidate to explore and then hits the chips, the conversation is internally inconsistent.
+
+More subtly, the chips always appear regardless of which candidate is selected, so a chat that started with a real typed answer for employment status will still show the "Employed at Meru Labs" chip as if it hasn't been captured yet.
+
+**Fix:** Either (a) make chips context-free generic phrases that work for any candidate:
+```javascript
+const CHIPS = [
+  "hi",
+  "Yes, currently employed",
+  "30 days notice, some flexibility possible",
+  "Happy to share CTC — currently 18 LPA, expecting 24 LPA",
+  "Open to hybrid, no relocation",
+];
+```
+Or (b) generate chips dynamically from the selected candidate's parsed data.
+
+---
+
+#### HL-M2 · No typing indicator / "thinking" state during LLM chat turns — UI appears frozen for 2-5 seconds
+**Raised by:** Candidate-Experience Expert, Frontend Expert (Panel 1)
+
+`sendChat()` in `app.js` fires the POST request and awaits the response with no intermediate UI state. During the 1-5 second LLM round-trip, the chat box is completely static. In a live demo this looks like the app crashed.
+
+**Fix (10-minute effort):**
+```javascript
+async function sendChat(message) {
+  addBubble("user", message);
+  const thinking = addBubble("assistant", "…");   // returns the element
+  try {
+    const data = await api(`/api/chat/${cid}`, {...});
+    thinking.textContent = data.reply;
+  } catch (err) {
+    thinking.textContent = err.message;
+  }
+}
+```
+(Requires `addBubble` to return the created element, a one-line change.)
+
+---
+
+#### HL-M3 · Q_COMPENSATION asks for "fixed + variable CTC" — candidates often don't know the breakdown, causing the scripted fallback to loop
+**Raised by:** Candidate-Experience Expert
+
+`chat_agent.py` line 12:
+```python
+Q_COMPENSATION = "Please share current fixed + variable CTC and your expected CTC (annual, INR)."
+```
+
+Many candidates in India know their gross CTC but not the fixed/variable split, especially in early career or companies that don't clearly communicate it. A candidate who answers "I earn about 14 LPA CTC" has technically answered the spirit of the question but not the literal form.
+
+In the scripted fallback, `_field("compensation")` is set to whatever string the user typed. So "14 LPA" will advance the conversation. In the LLM path, the model may reprompt: "Could you share the fixed and variable components separately?" — creating an unexpected extra turn that the demo chips don't cover.
+
+**Fix:** Simplify to match what candidates actually know:
+```python
+Q_COMPENSATION = "Could you share your current CTC (total annual package in LPA) and what you're looking for in the next role?"
+```
+
+---
+
+#### HL-M4 · Slot display in chat uses raw slot IDs ("slot-mon-1000") — candidates need human-readable times
+**Raised by:** Candidate-Experience Expert
+
+When the agent proposes slots, the listing in the chat reply is:
+```
+Open slots:
+- slot-mon-1000: Mon 10:00 AM (Video call)
+- slot-mon-1500: Mon 3:00 PM (Video call)
+- slot-wed-1100: Wed 11:00 AM (Phone)
+```
+
+The slot *ID* (`slot-mon-1000`) is an internal system key. A candidate being asked to "reply with the slot id" is being asked to copy-paste a database key into a conversation. In a real WhatsApp flow this would be replaced by numbered options ("Reply 1 for Monday 10 AM, 2 for Monday 3 PM"). In this demo context it's acceptable but jarring.
+
+The scripted fallback also tells candidates to "type BOOK <slot-id>" — this is definitely developer-speak, not conversational UX.
+
+**Fix (demo-quality improvement):** Change the listing format to numbered options and accept "1", "2", "3" as booking input:
+```
+Available slots:
+1️⃣ Monday 10:00 AM — Video call
+2️⃣ Monday  3:00 PM — Video call  
+3️⃣ Wednesday 11:00 AM — Phone
+
+Reply with 1, 2, or 3 to confirm your slot.
+```
+Update `_extract_slot()` to also accept `"1"`, `"2"`, `"3"` mapped to the last-proposed slot list.
+
+---
+
+#### HL-M5 · DEMO_SCRIPT.md Step 6 says "Close with the scoping call" — no script for what to say; this is the most important moment of the interview
+**Raised by:** Hiring Manager Expert
+
+Step 6 of the demo script:
+> `6. Open docs/MODULE_4_6_NOTES.md. Explain Kredily/TeamLogger join and Tally→CredFlow→realized commission. Close with the scoping call: AI core is real; vendor ATS/finance is mocked because an applicant does not have those admin accounts.`
+
+This is the most important beat in the entire demo — it's where the presenter demonstrates judgment (knowing what to build vs. what to document). But the script just says "Explain" and "Close with the scoping call" without giving the actual words. A nervous presenter will either over-explain (rambling for 3 minutes into the MODULE_4_6_NOTES) or under-explain (stumbling through a half-sentence).
+
+**Recommended closing script to add to `DEMO_SCRIPT.md`:**
+> *"The BRD is a 16-week, 6-module build with real enterprise connectors — CEIPAL, WhatsApp, Kredily, Tally. I scoped this prototype to implement the AI core — the parts I can actually run without admin credentials to those systems. Modules 4 and 6 are specced here in MODULE_4_6_NOTES — the polling interval, the webhook signature format, the Tally XML path — so if Virtuous did give me access, I know exactly what to build. The prototype is honest about where the mock boundary sits."*
+
+This is 4 sentences. If read exactly, it covers: what was scoped, why, what was documented, and what the path to production looks like. No dead air.
+
+---
+
+#### HL-M6 · No empty-state guidance on the Screening desk tab before any candidate is selected
+**Raised by:** Candidate-Experience Expert, Frontend Expert (Panel 1)
+
+When the Screening desk tab is opened with no candidate selected (or before ingest), the chat box is empty, the candidate dropdown is empty, and the slot panel shows "No open slots." There is no instructional text saying "select a candidate from the Pipeline tab first" or "ingest sample resumes before screening."
+
+A demo presenter who clicks Tab 3 before Tab 1 sees a blank, non-functional panel with no explanation. An interviewer watching this unfold will wonder if the tab is broken.
+
+**Fix:** Add to `index.html` inside `#screen` section:
+```html
+<p id="screenHint" class="muted">
+  ← Select a candidate from the Pipeline tab, or pick one from the dropdown above.
+</p>
+```
+Hide `#screenHint` when a candidate is selected via `#chatCand` change event.
+
+---
+
+#### HL-M7 · Hiring manager's first 5-minute repo scan: `DEMO_SCRIPT.md` is listed before `ARCHITECTURE.md` in README Docs section — wrong priority order for a technical reviewer
+**Raised by:** Hiring Manager Expert
+
+README `## Docs` section (lines 88-91):
+```markdown
+- [Architecture](docs/ARCHITECTURE.md)
+- [Modules 4 & 6 API map](docs/MODULE_4_6_NOTES.md)
+- [Demo script](docs/DEMO_SCRIPT.md)
+- [Keys and setup](docs/KEYS_AND_SETUP.md)
+```
+
+For a *technical* interviewer doing a 5-minute cold repo scan, the most valuable documents in priority order are:
+1. `ARCHITECTURE.md` (how does the system actually work) ✅ listed first — correct
+2. `KEYS_AND_SETUP.md` (can I run it) — listed last — should be second
+3. `MODULE_4_6_NOTES.md` (integration depth) — fine at third
+4. `DEMO_SCRIPT.md` (only useful if presenting live) — correctly last
+
+The current order is almost right. The only swap is Keys/Setup should move above Modules 4/6 — a technical reviewer will want to run the app before reading integration docs.
+
+Minor issue, but ordering signals judgment about what the reader needs next.
+
+---
+
+### [LOW] — Polish items; fix if time permits
+
+---
+
+#### HL-L1 · `CHAT_WALKTHROUGH.md` title says "Screening desk — sample answers" — not descriptive enough; hard to find when scanning `docs/`
+**Raised by:** Hiring Manager Expert
+
+`docs/CHAT_WALKTHROUGH.md` is titled "Screening desk — sample answers" at line 1. In a `docs/` directory listing with 6 files, a technical reviewer scanning for conversation flow documentation would not know this file contains the demo-quality sample dialog. A better title: "Chat screening walkthrough — sample conversation and booking flow."
+
+---
+
+#### HL-L2 · Footer still says "Anthropic console" link only — doesn't reflect multi-LLM reality; Gemini key is what's actually in `.env`
+**Raised by:** Candidate-Experience Expert, Hiring Manager Expert
+
+`index.html` line 129:
+```html
+Keys: <a href="https://console.anthropic.com/settings/keys">Anthropic console</a> · <span class="muted">see docs/KEYS_AND_SETUP.md</span>
+```
+
+The active key is Gemini, not Anthropic. The footer links only to the Anthropic console. A fresh user following the footer link will create an Anthropic key, add it as `ANTHROPIC_API_KEY`, and find it works — but the Gemini key already in `.env` would have been cheaper and faster. The footer should reflect the multi-LLM reality:
+```html
+Keys: <a href="https://aistudio.google.com/apikey">Gemini (free)</a> · <a href="https://console.anthropic.com/settings/keys">Anthropic</a> · see docs/KEYS_AND_SETUP.md
+```
+
+---
+
+#### HL-L3 · "TTF days (mock)" label visible on Executive dashboard KPI — "(mock)" label in a demo dashboard looks unpolished
+**Raised by:** Hiring Manager Expert
+
+`app.js` line 332: `["TTF days (mock)", d.avg_time_to_fill_days]` renders on the dashboard as a KPI tile labelled "TTF days (mock)." Labelling a dashboard widget "(mock)" in a live demo is unnecessary — every informed viewer knows TTF is estimated. A cleaner label: "TTF days (est.)" or just "Avg TTF." The fact that it's mocked is already noted in the footer and README.
+
+---
+
+#### HL-L4 · Candidate dropdown in Screening desk shows `id · full_name` — no job context; recruiter has to remember which candidate matched which JD
+**Raised by:** Candidate-Experience Expert
+
+`app.js` line 95:
+```javascript
+sel.innerHTML = data.candidates.map((c) => `<option value="${c.id}">${c.id} · ${c.full_name || "unnamed"}</option>`).join("");
+```
+
+The screening desk dropdown shows ID and name, but not the candidate's score or job they were scored against. A recruiter with 10 candidates scored against two different JDs cannot tell from the dropdown which is which. A small improvement: include the score in the option:
+```javascript
+`<option value="${c.id}">${c.full_name || "unnamed"} · Score: ${c.latest_score ?? "—"}</option>`
+```
+
+---
+
+## Panel 4 — Summary Matrix
+
+| ID | Severity | Expert(s) | Effort |
+|---|---|---|---|
+| HL-B1 | **BLOCKER** | Hiring Manager / Tech Writer | 1 min |
+| HL-B2 | **BLOCKER** | Hiring Manager / Candidate-UX | 15 min |
+| HL-H1 | HIGH | Candidate-UX | Trivial (rephrase 1 line) |
+| HL-H2 | HIGH | Candidate-UX | Trivial (rephrase 1 line) |
+| HL-H3 | HIGH | Candidate-UX | Small (add ACKS list) |
+| HL-H4 | HIGH | Candidate-UX / Hiring Manager | Trivial (demo script note) |
+| HL-H5 | HIGH | Hiring Manager | Small (rewrite Step 4) |
+| HL-H6 | HIGH | Hiring Manager | Medium (expand demo script) |
+| HL-H7 | HIGH | Candidate-UX | Small (rephrase 1 message) |
+| HL-M1 | MEDIUM | Candidate-UX / Hiring Manager | Small (genericise chips) |
+| HL-M2 | MEDIUM | Candidate-UX / Frontend | Small (add thinking bubble) |
+| HL-M3 | MEDIUM | Candidate-UX | Trivial (rephrase 1 line) |
+| HL-M4 | MEDIUM | Candidate-UX | Medium (numbered slot UX) |
+| HL-M5 | MEDIUM | Hiring Manager | Small (write closing script) |
+| HL-M6 | MEDIUM | Candidate-UX / Frontend | Trivial (add hint text) |
+| HL-M7 | MEDIUM | Hiring Manager | Trivial (reorder README links) |
+| HL-L1 | LOW | Hiring Manager | Trivial |
+| HL-L2 | LOW | Candidate-UX / Hiring Manager | Trivial |
+| HL-L3 | LOW | Hiring Manager | Trivial |
+| HL-L4 | LOW | Candidate-UX | Trivial |
+
+**Panel 4 totals: 2 BLOCKER · 7 HIGH · 6 MEDIUM · 4 LOW = 19 issues**
+
+---
+
+## Combined Four-Panel Issue Count
+
+| Severity | Panel 1 (Core Build) | Panel 2 (Reliability) | Panel 3 (Product & Comms) | Panel 4 (Human Lens) | **Grand Total** |
+|---|---|---|---|---|---|
+| BLOCKER | 3 | 4 | 2 | 2 | **11** |
+| HIGH | 9 | 8 | 8 | 7 | **32** |
+| MEDIUM | 11 | 10 | 11 | 6 | **38** |
+| LOW | 10 | 6 | 6 | 4 | **26** |
+| **Total** | **33** | **28** | **27** | **19** | **107** |
+
+---
+
+## What Panel 4 Agrees Is Done Well
+
+- ✅ **The chip UX is the right idea** — pre-loaded answer shortcuts for a demo are genuinely smart. No other intern project in this stack would have them. The concept is correct; it just needs the content to be generic enough to survive candidate-switching.
+- ✅ **"Simulated web chat (not WhatsApp)" label** — this is the right honest framing. The note appears in the UI (`index.html` line 78) and doesn't pretend the screening desk is WhatsApp. Intellectual honesty like this is exactly what a Virtuous hiring manager wants to see.
+- ✅ **Clicking a pipeline row auto-navigates to the Screening desk** — this is a thoughtful UX flow. The candidate-to-screening link is seamless and would impress a non-technical interviewer watching the demo.
+- ✅ **"Clear chat" button exists** — critical for a live demo where you may need to reset between runs. Most demo prototypes don't think about this.
+- ✅ **Dark mode toggle** — completely unnecessary for the task, but it signals that the builder thought about the UI as a real product, not just a test harness.
+- ✅ **The scoping narrative in `README.md` lines 1-14** — "the AI funnel is real; paid enterprise connectors are mocked and documented" is exactly the right framing and exactly the right level of candour. A senior Virtuous interviewer reading this will immediately think "this person understands scope discipline."
+- ✅ **Dossier copy button** — lets a recruiter paste the AI-generated candidate summary directly into an email or CEIPAL note. Shows product thinking: the output of the system has a natural next action, and the UI supports it.
+- ✅ **Hinglish detection hook** — `_detect_hinglish_or_hindi()` in `chat_agent.py` exists (even if not yet wired into anything). The fact that the author thought about Indian recruitment's bilingual reality at all is a genuine differentiator.
+
+---
+
+## Panel 4 — "Fix It in 30 Minutes" Priority List
+
+The two BLOCKERs and three HIGH items below can be fixed in under 30 minutes and will materially improve both the candidate experience and the interview demo quality:
+
+| # | ID | Fix | Time |
+|---|---|---|---|
+| 1 | HL-B1 | Change port 8000 → 8080 in `DEMO_SCRIPT.md` and `app.js` error message | 2 min |
+| 2 | HL-B2 | Add "failed candidate" beat to `DEMO_SCRIPT.md` Step 3 | 5 min |
+| 3 | HL-H2 | Change "TalentOps screening desk" → "Virtuous Advisors' screening team" in scripted fallback | 1 min |
+| 4 | HL-H1 | Rephrase Q_NOTICE to remove "buyout negotiable vs what is printed on paper" | 1 min |
+| 5 | HL-H5 | Rewrite `DEMO_SCRIPT.md` Step 4 with reset instruction and slot caveat | 5 min |
+| 6 | HL-H6 | Expand `DEMO_SCRIPT.md` with narration points + prepared Q&A section | 15 min |
+| 7 | HL-H7 | Add warm booking confirmation message for candidates | 3 min |
+| **Total** | | | **~32 min** |
+
+---
+
+*This Panel 4 review section was produced by the simulated End User/Candidate-Experience and Hiring Manager/Interviewer expert personas. All UX observations are based on direct inspection of `chat_agent.py`, `frontend/app.js`, `frontend/index.html`, `docs/DEMO_SCRIPT.md`, and `docs/CHAT_WALKTHROUGH.md`.*
+
+---
+
+---
+
 # Panel 2 — Reliability & Operations Review
 
 > **Experts:** Security · DevOps/Deployment · Performance · Cost/API Economics  
@@ -2008,3 +2518,513 @@ If only one working day is available before submission, fix in this order:
 ---
 
 *This Panel 3 review section was produced by the simulated Product/Business, Technical Writer, and Code Quality expert personas. All file references, line numbers, and code snippets are drawn from direct inspection of the `talentops-ai/` repository.*
+
+---
+
+---
+
+# Panel 4 — Human Lens Review
+
+> **Panel 4 experts:** End User / Candidate-Experience Expert (20+ yrs UX, conversational design, HR-tech) · Hiring Manager / Interviewer Expert (20+ yrs recruiting ops, technical panel lead, intern evaluation)
+> **Scope:** Does the chat feel natural to the *candidate*? Does the repo make a strong impression in the *first 5 minutes* of a Virtuous interview? Is the demo script tight enough to run live without dead air?
+> **Input artefacts read:** `app/chat_agent.py`, `frontend/index.html`, `frontend/app.js`, `docs/DEMO_SCRIPT.md`, `docs/CHAT_WALKTHROUGH.md`, `README.md`, full review of chat UX rendering in the browser.
+
+---
+
+## Panel 4 — Executive Summary
+
+**Candidate-experience view:** The scripted fallback dialog reads more like a form interrogation than a human conversation. Questions are technically correct but tonally HR-jargon heavy ("buyout negotiable vs what is printed on paper" to a nervous first-contact candidate), the system introduces itself as the "TalentOps screening desk" rather than by the company name, there is no acknowledgement of the candidate's *answers* (just "Thanks — noted"), and there is zero graceful handling of ambiguous, multi-part, or off-script replies. Candidates who don't follow the exact happy-path chip sequence will get into a state where the scripted fallback loops silently or moves on without confirming what it captured.
+
+**Hiring manager / interview view:** The repo is impressive and the scoping judgment is very good, but the demo script has three "dead air" moments — the port is wrong, the chip answers are only in `CHAT_WALKTHROUGH.md` (not the demo script), and there is no "here's what to say if something breaks" fallback line. An interviewer asking "walk me through what's real vs what you'd build next week" will get a crisp answer; an interviewer who asks "show me a candidate who *failed* screening" will cause the demo to stall because no below-threshold candidate gets routed into the chat, and there is no pre-loaded failing scenario. These are fixable in 30 minutes and would meaningfully upgrade the demo's resilience under live questioning.
+
+---
+
+## Panel 4 — Issue List (Prioritised)
+
+---
+
+### [BLOCKER] — Will visibly break the demo or embarrass on first run
+
+---
+
+#### HL-B1 · `DEMO_SCRIPT.md` Step 1 opens `http://127.0.0.1:8000` — server won't start on that port on this machine; evaluator sees a blank page or browser error
+**Raised by:** Hiring Manager Expert, Technical Writer (Panel 3 PQ-B2 cross-reference)
+
+The demo script's very first instruction is to open `http://127.0.0.1:8000`. On this machine port 8000 is blocked (WinError 10013). The correct port is 8080. Any live interview where the interviewer opens the URL from Step 1 and sees "This site can't be reached" will consume the first 90 seconds of a 15-minute demo in troubleshooting.
+
+This is the single most damaging issue for the interview experience because it happens in the opening 10 seconds.
+
+**Fix (1 minute):** Change `DEMO_SCRIPT.md` line 3 from:
+> `Open http://127.0.0.1:8000`
+
+To:
+> `Open http://127.0.0.1:8080 (or 8000 on non-Windows; see Quick Start)`
+
+And change `app.js` line 52 error message from `"start uvicorn on port 8000"` to `"start uvicorn on port 8080"`.
+
+---
+
+#### HL-B2 · Demo has no "failed candidate" scenario — interviewer question "show me someone who didn't pass" has no answer
+**Raised by:** Hiring Manager Expert, Candidate-Experience Expert
+
+The demo script goes: ingest → score → screen Ananya (who passes) → book slot. The entire happy path. A Virtuous interviewer who asks "what does the system do when a candidate isn't a fit?" or "can you show me a below-threshold candidate?" will get one of two bad outcomes:
+1. The presenter clicks Vikram in the pipeline table (score below threshold), navigates to screening desk — and discovers there is nothing pre-loaded in the chat for Vikram. The chat box is empty, the chips are Ananya's answers, and the demo stalls.
+2. The presenter improvises: "well, you can see his score is lower" — which is weak compared to "let me show you the system actively rejecting him with an explanation."
+
+The `DEMO_SCRIPT.md` should explicitly describe one "low fit" moment as a scripted beat, not just gesture at score numbers.
+
+**Fix:** Add to `DEMO_SCRIPT.md` Step 3:
+> *"Point at Vikram (Finance background, score ~28). Note: below the 70-point threshold — tagged 'Sourced - Below Threshold'. The chat desk won't advance him to scheduling; the system surfaces the gap summary instead."*
+
+And add to `CHAT_WALKTHROUGH.md` a two-line "Rejection path" section explaining what the agent says if `qualified=False` after all questions are captured.
+
+---
+
+### [HIGH] — Significant experience problems; fix before any demo or interview
+
+---
+
+#### HL-H1 · Screening question Q_NOTICE is recruiter-speak, not candidate language — will confuse or alarm a real applicant
+**Raised by:** Candidate-Experience Expert
+
+`chat_agent.py` line 11:
+```python
+Q_NOTICE = "What is your actual last working day / notice period, and is a buyout negotiable vs what is printed on paper?"
+```
+
+Breaking this down from the candidate's seat:
+- **"actual last working day vs what is printed on paper"** — implies you suspect the candidate is lying about their notice period before they've said anything. Immediately adversarial.
+- **"buyout negotiable"** — industry jargon that early-career candidates (and many mid-career ones) won't understand without context. Is the company buying out *my* notice? Am I buying *myself* out? From whom?
+- **"vs what is printed on paper"** — implies the candidate might misrepresent their contract terms. This phrasing belongs in a recruiter's internal notes, not in a first-contact message to the candidate.
+
+The LLM mode buffers this somewhat because the model will rephrase. But the scripted fallback delivers this verbatim.
+
+**Fix (candidate-friendly rephrasing):**
+```python
+Q_NOTICE = "What's your notice period, and do you have any flexibility on the start date if the right offer comes through?"
+```
+This captures the same data (notice length + buyout possibility) without the confrontational subtext.
+
+---
+
+#### HL-H2 · Agent introduces itself as "TalentOps screening desk," not as Virtuous — candidate has no trust anchor
+**Raised by:** Candidate-Experience Expert
+
+`chat_agent.py` scripted fallback, line 105-108:
+```python
+reply = (
+    f"Hi {name}, this is the TalentOps screening desk. "
+    f"I'll confirm four points, then we can lock an interview slot. {qtext}"
+)
+```
+
+A real candidate receiving this message cold would not recognise "TalentOps." Their resume went to "Virtuous Advisors." They're now talking to something called "TalentOps screening desk." The brand mismatch creates friction and distrust — candidates are already wary of automated screening.
+
+The CHAT_SYSTEM prompt also says "You are Virtuous' candidate pre-screening agent (demo)" — so the LLM gets the brand right, the scripted fallback does not.
+
+**Fix:**
+```python
+reply = (
+    f"Hi {name}, I'm reaching out from Virtuous Advisors' screening team. "
+    f"Quick check — I'll confirm four points and then we can look at interview slots. {qtext}"
+)
+```
+
+---
+
+#### HL-H3 · No acknowledgement of candidate's actual answer — "Thanks — noted" for every response is robotic and signals the bot isn't listening
+**Raised by:** Candidate-Experience Expert
+
+`chat_agent.py` line 110:
+```python
+reply = f"Thanks — noted. {qtext}"
+```
+
+This is the agent's transition phrase for questions 2, 3, and 4 in the scripted path. Every single transition is the same two words. A candidate who shares:
+> *"I've been at this company for 6 years, it's my first job out of college, notice is 60 days but my manager is supportive"*
+
+Receives: **"Thanks — noted. Please share current fixed + variable CTC and your expected CTC (annual, INR)."**
+
+This is worse than a paper form. A paper form doesn't pretend to be having a conversation. The lack of any reflection ("Got it — 60 days, good to know") signals immediately that no human is reading the answers, which erodes any goodwill the candidate had going in.
+
+The LLM path handles this well (the model reflects back the answer). The scripted fallback needs at minimum a rotating acknowledgement set.
+
+**Fix:**
+```python
+ACKS = [
+    "Got it, thanks.",
+    "Noted — appreciated.",
+    "Thanks for sharing that.",
+    "Perfect, that's helpful.",
+]
+# Use: random.choice(ACKS) + f" {qtext}"
+```
+
+---
+
+#### HL-H4 · Chat input placeholder says "Type as the candidate…" — demo-only framing leaks to the UI; a real candidate would be confused
+**Raised by:** Candidate-Experience Expert, Hiring Manager Expert
+
+`index.html` line 85:
+```html
+<input id="chatInput" placeholder="Type as the candidate…" autocomplete="off" />
+```
+
+In the context of a live demo shown to an interviewer, this is actually fine — it tells the presenter they should be playing the candidate role. But the section header (`<h2>3. Pre-screen chat</h2>`) and the label (`<p class="muted">Simulated web chat (not WhatsApp). Use the chips if you do not want to type.</p>`) both break the fiction of showing a candidate-facing UI.
+
+From a Hiring Manager perspective: this is acceptable for a demo — the framing is honest. The issue is that the demo script (Step 4) says "Show Scheduled, slot gone, reminders queued" but does not explicitly tell the presenter to narrate the perspective shift ("I'm now playing the candidate here"). Without that narration, a non-technical interviewer may not understand why *they* are typing into a chat box as if they were the applicant.
+
+**Fix (demo script only — no code change needed):** Add to `DEMO_SCRIPT.md` Step 4, before the booking instruction:
+> *"Narrate: 'This is the recruiter view of the screening desk. The candidate would receive this conversation over WhatsApp — I'm simulating their replies using the answer chips.'"*
+
+---
+
+#### HL-H5 · Demo script Step 4 says "click Ananya in the table" then "pick her in the dropdown" — two different gestures, one instruction, causes confusion
+**Raised by:** Hiring Manager Expert
+
+`DEMO_SCRIPT.md` Step 4:
+> `click Ananya in the table (or pick her in the dropdown)`
+
+This is the single step where the most interesting demo action happens (the actual chat), and the instruction is ambiguous. Which of two interactions should the presenter do? The pipeline table is on Tab 1 (Pipeline) and the dropdown is on Tab 3 (Screening desk). Clicking Ananya in the table correctly auto-switches to the Screening desk tab — but "or pick her in the dropdown" suggests these are equivalent, when the table-click is smoother for a live demo.
+
+More critically, the step says "Use the answer chips, then click **Book slot-mon-1500**" — but `slot-mon-1500` may not be available if the calendar was already booked in a previous demo run. There is no reset instruction, and a presenter who clicks "Book slot-mon-1500" on a depleted calendar will see "Could not book that slot: already booked" in the chat and have to explain why.
+
+**Fix to `DEMO_SCRIPT.md` Step 4:**
+> *"In the Pipeline tab, click Ananya's row — this auto-opens the Screening desk. Use the five answer chips in order. When 'qualified' triggers, the slot panel refreshes — click any available slot button (e.g. slot-mon-1500 if fresh). If slots are depleted, click **Clear chat** first to reset the session, then re-run the chips."*
+
+---
+
+#### HL-H6 · `DEMO_SCRIPT.md` is 8 lines; it covers none of the likely interviewer questions — no "what would you build next?" beat
+**Raised by:** Hiring Manager Expert
+
+The demo script is a mechanical walkthrough sequence, not a presentation guide. It tells the presenter *what to click* but not *what to say*. A strong internship demo has three layers:
+
+1. **Show** (what's on screen) ✅ covered
+2. **Tell** (narration of *why* each design decision was made) ❌ absent
+3. **Extend** (what you'd build next, with specificity) ❌ absent
+
+A Virtuous interviewer will almost certainly ask one of:
+- "Why did you pick FastAPI over Django?"
+- "What would you do differently with more time?"
+- "How would this connect to CEIPAL for real?"
+- "What's the cost to run this at our actual scale?"
+
+The demo script has no prepared answers for any of these. The `MODULE_4_6_NOTES.md` has excellent material for the CEIPAL/Tally question but the script doesn't reference it as a talking point — it just says "Open `docs/MODULE_4_6_NOTES.md`. Explain…" without giving the explanation.
+
+**Fix:** Expand `DEMO_SCRIPT.md` from 8 lines to ~40 lines, adding:
+- A "Narration points" column for each step (one sentence per beat of what to say, not just what to click)
+- A "Likely questions + prepared answers" section at the bottom (4-5 Q&A pairs)
+- A "If something breaks" section (one sentence per failure mode: server down, slots depleted, LLM timeout)
+
+---
+
+#### HL-H7 · No "Thank you for completing the screening" terminal message — chat ends on a system message about slot IDs
+**Raised by:** Candidate-Experience Expert
+
+When all four questions are captured and the candidate is qualified, the scripted fallback sends:
+```
+"All four qualification points are captured. If this looks aligned, reply with the slot id you'd like (e.g. slot-mon-1000) from the list I'll show, or type BOOK <slot-id>."
+```
+
+And after booking:
+```
+"Booked slot-mon-1500 (Mon 3:00 PM · Video call). Status: Scheduled. Calendar invite would be sent via Google/M365 here."
+```
+
+These are backend confirmation messages written for a developer, not a candidate closure message. A candidate completing a real screening deserves a warm close:
+> *"You're all set, [Name]! Your interview is confirmed for [date/time]. We'll send you a calendar invite and a reminder 24 hours before. Looking forward to speaking with you — the team at Virtuous Advisors."*
+
+The LLM path will generate something warmer naturally. The scripted fallback will not.
+
+**Fix:** Replace the booking confirmation in `_finalize()` (line 177):
+```python
+reply += (
+    f"\n\n✅ You're all set, {cand.get('full_name','').split()[0]}! "
+    f"Interview confirmed: {booked['label']}. "
+    f"A calendar invite and reminders (T-24h / T-2h / T-15m) will follow. "
+    f"The Virtuous team looks forward to speaking with you."
+)
+```
+
+---
+
+### [MEDIUM] — Noticeable friction; fix before a polished demo or external audience
+
+---
+
+#### HL-M1 · Chat chip answers are Ananya-specific — running the demo on any other candidate produces nonsensical answers
+**Raised by:** Candidate-Experience Expert, Hiring Manager Expert
+
+`app.js` line 4-10, the CHIPS array:
+```javascript
+const CHIPS = [
+  "hi",
+  "Employed at Meru Labs, not serving notice yet",
+  "30 days on paper, buyout possible",
+  "Current 24 LPA fixed, expected 32 LPA",
+  "Hybrid Bengaluru is fine, no relocation needed",
+];
+```
+
+These are hardcoded to match Ananya Sharma's fictional profile. If a demo presenter clicks on Rahul Gupta (who is listed as based in Noida), chips 5 says "Hybrid Bengaluru is fine" — which is incoherent for a Noida candidate. If an interviewer selects a different candidate to explore and then hits the chips, the conversation is internally inconsistent.
+
+More subtly, the chips always appear regardless of which candidate is selected, so a chat that started with a real typed answer for employment status will still show the "Employed at Meru Labs" chip as if it hasn't been captured yet.
+
+**Fix:** Either (a) make chips context-free generic phrases that work for any candidate:
+```javascript
+const CHIPS = [
+  "hi",
+  "Yes, currently employed",
+  "30 days notice, some flexibility possible",
+  "Happy to share CTC — currently 18 LPA, expecting 24 LPA",
+  "Open to hybrid, no relocation",
+];
+```
+Or (b) generate chips dynamically from the selected candidate's parsed data.
+
+---
+
+#### HL-M2 · No typing indicator / "thinking" state during LLM chat turns — UI appears frozen for 2-5 seconds
+**Raised by:** Candidate-Experience Expert, Frontend Expert (Panel 1)
+
+`sendChat()` in `app.js` fires the POST request and awaits the response with no intermediate UI state. During the 1-5 second LLM round-trip, the chat box is completely static. In a live demo this looks like the app crashed.
+
+**Fix (10-minute effort):**
+```javascript
+async function sendChat(message) {
+  addBubble("user", message);
+  const thinking = addBubble("assistant", "…");   // returns the element
+  try {
+    const data = await api(`/api/chat/${cid}`, {...});
+    thinking.textContent = data.reply;
+  } catch (err) {
+    thinking.textContent = err.message;
+  }
+}
+```
+(Requires `addBubble` to return the created element, a one-line change.)
+
+---
+
+#### HL-M3 · Q_COMPENSATION asks for "fixed + variable CTC" — candidates often don't know the breakdown, causing the scripted fallback to loop
+**Raised by:** Candidate-Experience Expert
+
+`chat_agent.py` line 12:
+```python
+Q_COMPENSATION = "Please share current fixed + variable CTC and your expected CTC (annual, INR)."
+```
+
+Many candidates in India know their gross CTC but not the fixed/variable split, especially in early career or companies that don't clearly communicate it. A candidate who answers "I earn about 14 LPA CTC" has technically answered the spirit of the question but not the literal form.
+
+In the scripted fallback, `_field("compensation")` is set to whatever string the user typed. So "14 LPA" will advance the conversation. In the LLM path, the model may reprompt: "Could you share the fixed and variable components separately?" — creating an unexpected extra turn that the demo chips don't cover.
+
+**Fix:** Simplify to match what candidates actually know:
+```python
+Q_COMPENSATION = "Could you share your current CTC (total annual package in LPA) and what you're looking for in the next role?"
+```
+
+---
+
+#### HL-M4 · Slot display in chat uses raw slot IDs ("slot-mon-1000") — candidates need human-readable times
+**Raised by:** Candidate-Experience Expert
+
+When the agent proposes slots, the listing in the chat reply is:
+```
+Open slots:
+- slot-mon-1000: Mon 10:00 AM (Video call)
+- slot-mon-1500: Mon 3:00 PM (Video call)
+- slot-wed-1100: Wed 11:00 AM (Phone)
+```
+
+The slot *ID* (`slot-mon-1000`) is an internal system key. A candidate being asked to "reply with the slot id" is being asked to copy-paste a database key into a conversation. In a real WhatsApp flow this would be replaced by numbered options ("Reply 1 for Monday 10 AM, 2 for Monday 3 PM"). In this demo context it's acceptable but jarring.
+
+The scripted fallback also tells candidates to "type BOOK <slot-id>" — this is definitely developer-speak, not conversational UX.
+
+**Fix (demo-quality improvement):** Change the listing format to numbered options and accept "1", "2", "3" as booking input:
+```
+Available slots:
+1️⃣ Monday 10:00 AM — Video call
+2️⃣ Monday  3:00 PM — Video call  
+3️⃣ Wednesday 11:00 AM — Phone
+
+Reply with 1, 2, or 3 to confirm your slot.
+```
+Update `_extract_slot()` to also accept `"1"`, `"2"`, `"3"` mapped to the last-proposed slot list.
+
+---
+
+#### HL-M5 · DEMO_SCRIPT.md Step 6 says "Close with the scoping call" — no script for what to say; this is the most important moment of the interview
+**Raised by:** Hiring Manager Expert
+
+Step 6 of the demo script:
+> `6. Open docs/MODULE_4_6_NOTES.md. Explain Kredily/TeamLogger join and Tally→CredFlow→realized commission. Close with the scoping call: AI core is real; vendor ATS/finance is mocked because an applicant does not have those admin accounts.`
+
+This is the most important beat in the entire demo — it's where the presenter demonstrates judgment (knowing what to build vs. what to document). But the script just says "Explain" and "Close with the scoping call" without giving the actual words. A nervous presenter will either over-explain (rambling for 3 minutes into the MODULE_4_6_NOTES) or under-explain (stumbling through a half-sentence).
+
+**Recommended closing script to add to `DEMO_SCRIPT.md`:**
+> *"The BRD is a 16-week, 6-module build with real enterprise connectors — CEIPAL, WhatsApp, Kredily, Tally. I scoped this prototype to implement the AI core — the parts I can actually run without admin credentials to those systems. Modules 4 and 6 are specced here in MODULE_4_6_NOTES — the polling interval, the webhook signature format, the Tally XML path — so if Virtuous did give me access, I know exactly what to build. The prototype is honest about where the mock boundary sits."*
+
+This is 4 sentences. If read exactly, it covers: what was scoped, why, what was documented, and what the path to production looks like. No dead air.
+
+---
+
+#### HL-M6 · No empty-state guidance on the Screening desk tab before any candidate is selected
+**Raised by:** Candidate-Experience Expert, Frontend Expert (Panel 1)
+
+When the Screening desk tab is opened with no candidate selected (or before ingest), the chat box is empty, the candidate dropdown is empty, and the slot panel shows "No open slots." There is no instructional text saying "select a candidate from the Pipeline tab first" or "ingest sample resumes before screening."
+
+A demo presenter who clicks Tab 3 before Tab 1 sees a blank, non-functional panel with no explanation. An interviewer watching this unfold will wonder if the tab is broken.
+
+**Fix:** Add to `index.html` inside `#screen` section:
+```html
+<p id="screenHint" class="muted">
+  ← Select a candidate from the Pipeline tab, or pick one from the dropdown above.
+</p>
+```
+Hide `#screenHint` when a candidate is selected via `#chatCand` change event.
+
+---
+
+#### HL-M7 · Hiring manager's first 5-minute repo scan: `DEMO_SCRIPT.md` is listed before `ARCHITECTURE.md` in README Docs section — wrong priority order for a technical reviewer
+**Raised by:** Hiring Manager Expert
+
+README `## Docs` section (lines 88-91):
+```markdown
+- [Architecture](docs/ARCHITECTURE.md)
+- [Modules 4 & 6 API map](docs/MODULE_4_6_NOTES.md)
+- [Demo script](docs/DEMO_SCRIPT.md)
+- [Keys and setup](docs/KEYS_AND_SETUP.md)
+```
+
+For a *technical* interviewer doing a 5-minute cold repo scan, the most valuable documents in priority order are:
+1. `ARCHITECTURE.md` (how does the system actually work) ✅ listed first — correct
+2. `KEYS_AND_SETUP.md` (can I run it) — listed last — should be second
+3. `MODULE_4_6_NOTES.md` (integration depth) — fine at third
+4. `DEMO_SCRIPT.md` (only useful if presenting live) — correctly last
+
+The current order is almost right. The only swap is Keys/Setup should move above Modules 4/6 — a technical reviewer will want to run the app before reading integration docs.
+
+Minor issue, but ordering signals judgment about what the reader needs next.
+
+---
+
+### [LOW] — Polish items; fix if time permits
+
+---
+
+#### HL-L1 · `CHAT_WALKTHROUGH.md` title says "Screening desk — sample answers" — not descriptive enough; hard to find when scanning `docs/`
+**Raised by:** Hiring Manager Expert
+
+`docs/CHAT_WALKTHROUGH.md` is titled "Screening desk — sample answers" at line 1. In a `docs/` directory listing with 6 files, a technical reviewer scanning for conversation flow documentation would not know this file contains the demo-quality sample dialog. A better title: "Chat screening walkthrough — sample conversation and booking flow."
+
+---
+
+#### HL-L2 · Footer still says "Anthropic console" link only — doesn't reflect multi-LLM reality; Gemini key is what's actually in `.env`
+**Raised by:** Candidate-Experience Expert, Hiring Manager Expert
+
+`index.html` line 129:
+```html
+Keys: <a href="https://console.anthropic.com/settings/keys">Anthropic console</a> · <span class="muted">see docs/KEYS_AND_SETUP.md</span>
+```
+
+The active key is Gemini, not Anthropic. The footer links only to the Anthropic console. A fresh user following the footer link will create an Anthropic key, add it as `ANTHROPIC_API_KEY`, and find it works — but the Gemini key already in `.env` would have been cheaper and faster. The footer should reflect the multi-LLM reality:
+```html
+Keys: <a href="https://aistudio.google.com/apikey">Gemini (free)</a> · <a href="https://console.anthropic.com/settings/keys">Anthropic</a> · see docs/KEYS_AND_SETUP.md
+```
+
+---
+
+#### HL-L3 · "TTF days (mock)" label visible on Executive dashboard KPI — "(mock)" label in a demo dashboard looks unpolished
+**Raised by:** Hiring Manager Expert
+
+`app.js` line 332: `["TTF days (mock)", d.avg_time_to_fill_days]` renders on the dashboard as a KPI tile labelled "TTF days (mock)." Labelling a dashboard widget "(mock)" in a live demo is unnecessary — every informed viewer knows TTF is estimated. A cleaner label: "TTF days (est.)" or just "Avg TTF." The fact that it's mocked is already noted in the footer and README.
+
+---
+
+#### HL-L4 · Candidate dropdown in Screening desk shows `id · full_name` — no job context; recruiter has to remember which candidate matched which JD
+**Raised by:** Candidate-Experience Expert
+
+`app.js` line 95:
+```javascript
+sel.innerHTML = data.candidates.map((c) => `<option value="${c.id}">${c.id} · ${c.full_name || "unnamed"}</option>`).join("");
+```
+
+The screening desk dropdown shows ID and name, but not the candidate's score or job they were scored against. A recruiter with 10 candidates scored against two different JDs cannot tell from the dropdown which is which. A small improvement: include the score in the option:
+```javascript
+`<option value="${c.id}">${c.full_name || "unnamed"} · Score: ${c.latest_score ?? "—"}</option>`
+```
+
+---
+
+## Panel 4 — Summary Matrix
+
+| ID | Severity | Expert(s) | Effort |
+|---|---|---|---|
+| HL-B1 | **BLOCKER** | Hiring Manager / Tech Writer | 1 min |
+| HL-B2 | **BLOCKER** | Hiring Manager / Candidate-UX | 15 min |
+| HL-H1 | HIGH | Candidate-UX | Trivial (rephrase 1 line) |
+| HL-H2 | HIGH | Candidate-UX | Trivial (rephrase 1 line) |
+| HL-H3 | HIGH | Candidate-UX | Small (add ACKS list) |
+| HL-H4 | HIGH | Candidate-UX / Hiring Manager | Trivial (demo script note) |
+| HL-H5 | HIGH | Hiring Manager | Small (rewrite Step 4) |
+| HL-H6 | HIGH | Hiring Manager | Medium (expand demo script) |
+| HL-H7 | HIGH | Candidate-UX | Small (rephrase 1 message) |
+| HL-M1 | MEDIUM | Candidate-UX / Hiring Manager | Small (genericise chips) |
+| HL-M2 | MEDIUM | Candidate-UX / Frontend | Small (add thinking bubble) |
+| HL-M3 | MEDIUM | Candidate-UX | Trivial (rephrase 1 line) |
+| HL-M4 | MEDIUM | Candidate-UX | Medium (numbered slot UX) |
+| HL-M5 | MEDIUM | Hiring Manager | Small (write closing script) |
+| HL-M6 | MEDIUM | Candidate-UX / Frontend | Trivial (add hint text) |
+| HL-M7 | MEDIUM | Hiring Manager | Trivial (reorder README links) |
+| HL-L1 | LOW | Hiring Manager | Trivial |
+| HL-L2 | LOW | Candidate-UX / Hiring Manager | Trivial |
+| HL-L3 | LOW | Hiring Manager | Trivial |
+| HL-L4 | LOW | Candidate-UX | Trivial |
+
+**Panel 4 totals: 2 BLOCKER · 7 HIGH · 6 MEDIUM · 4 LOW = 19 issues**
+
+---
+
+## Combined Four-Panel Issue Count
+
+| Severity | Panel 1 (Core Build) | Panel 2 (Reliability) | Panel 3 (Product & Comms) | Panel 4 (Human Lens) | **Grand Total** |
+|---|---|---|---|---|---|
+| BLOCKER | 3 | 4 | 2 | 2 | **11** |
+| HIGH | 9 | 8 | 8 | 7 | **32** |
+| MEDIUM | 11 | 10 | 11 | 6 | **38** |
+| LOW | 10 | 6 | 6 | 4 | **26** |
+| **Total** | **33** | **28** | **27** | **19** | **107** |
+
+---
+
+## What Panel 4 Agrees Is Done Well
+
+- ✅ **The chip UX is the right idea** — pre-loaded answer shortcuts for a demo are genuinely smart. No other intern project in this stack would have them. The concept is correct; it just needs the content to be generic enough to survive candidate-switching.
+- ✅ **"Simulated web chat (not WhatsApp)" label** — this is the right honest framing. The note appears in the UI (`index.html` line 78) and doesn't pretend the screening desk is WhatsApp. Intellectual honesty like this is exactly what a Virtuous hiring manager wants to see.
+- ✅ **Clicking a pipeline row auto-navigates to the Screening desk** — this is a thoughtful UX flow. The candidate-to-screening link is seamless and would impress a non-technical interviewer watching the demo.
+- ✅ **"Clear chat" button exists** — critical for a live demo where you may need to reset between runs. Most demo prototypes don't think about this.
+- ✅ **Dark mode toggle** — completely unnecessary for the task, but it signals that the builder thought about the UI as a real product, not just a test harness.
+- ✅ **The scoping narrative in `README.md` lines 1-14** — "the AI funnel is real; paid enterprise connectors are mocked and documented" is exactly the right framing and exactly the right level of candour. A senior Virtuous interviewer reading this will immediately think "this person understands scope discipline."
+- ✅ **Dossier copy button** — lets a recruiter paste the AI-generated candidate summary directly into an email or CEIPAL note. Shows product thinking: the output of the system has a natural next action, and the UI supports it.
+- ✅ **Hinglish detection hook** — `_detect_hinglish_or_hindi()` in `chat_agent.py` exists (even if not yet wired into anything). The fact that the author thought about Indian recruitment's bilingual reality at all is a genuine differentiator.
+
+---
+
+## Panel 4 — "Fix It in 30 Minutes" Priority List
+
+The two BLOCKERs and three HIGH items below can be fixed in under 30 minutes and will materially improve both the candidate experience and the interview demo quality:
+
+| # | ID | Fix | Time |
+|---|---|---|---|
+| 1 | HL-B1 | Change port 8000 → 8080 in `DEMO_SCRIPT.md` and `app.js` error message | 2 min |
+| 2 | HL-B2 | Add "failed candidate" beat to `DEMO_SCRIPT.md` Step 3 | 5 min |
+| 3 | HL-H2 | Change "TalentOps screening desk" → "Virtuous Advisors' screening team" in scripted fallback | 1 min |
+| 4 | HL-H1 | Rephrase Q_NOTICE to remove "buyout negotiable vs what is printed on paper" | 1 min |
+| 5 | HL-H5 | Rewrite `DEMO_SCRIPT.md` Step 4 with reset instruction and slot caveat | 5 min |
+| 6 | HL-H6 | Expand `DEMO_SCRIPT.md` with narration points + prepared Q&A section | 15 min |
+| 7 | HL-H7 | Add warm booking confirmation message for candidates | 3 min |
+| **Total** | | | **~32 min** |
+
+---
+
+*This Panel 4 review section was produced by the simulated End User/Candidate-Experience and Hiring Manager/Interviewer expert personas. All UX observations are based on direct inspection of `chat_agent.py`, `frontend/app.js`, `frontend/index.html`, `docs/DEMO_SCRIPT.md`, and `docs/CHAT_WALKTHROUGH.md`.*
