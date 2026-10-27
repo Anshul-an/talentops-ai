@@ -153,3 +153,16 @@ class VersionInfo(BaseModel):
     name: str = "TalentOps AI"
     version: str = "0.1.0"
     git_sha: str = "unknown"
+
+
+class DatabaseCounts(BaseModel):
+    candidates: int
+    jobs: int
+    interviews: int
+    scores: int
+
+
+class DetailedHealth(BaseModel):
+    ok: bool = True
+    llm: dict[str, Any] = Field(default_factory=dict)
+    database: DatabaseCounts
