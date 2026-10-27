@@ -346,6 +346,22 @@ def dashboard_summary() -> dict:
     return summary()
 
 
+@app.get("/api/export/csv")
+def export_csv() -> Response:
+    import io, csv
+    cands = db.list_candidates()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["ID", "Name", "Location", "Email", "Phone", "Channel", "Score", "Status"])
+    for c in cands:
+        writer.writerow([c.get("id"), c.get("full_name"), c.get("current_location"), c.get("email"), c.get("phone"), c.get("source_channel"), c.get("latest_score"), c.get("latest_status")])
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=candidates.csv"},
+    )
+
+
 @app.get("/export/excel")
 @app.get("/api/export/excel")
 def export_excel() -> Response:
