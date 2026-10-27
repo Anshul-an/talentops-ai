@@ -3,6 +3,9 @@ from typing import Any
 from app import db
 from app import scheduler
 from app.llm import complete_json, has_llm
+from app.logging_config import get_logger
+
+logger = get_logger("chat_agent")
 
 QUESTIONS = [
     ("employment", "Are you currently employed, serving notice, or immediately available?"),
@@ -34,6 +37,7 @@ def start_or_continue(candidate_id: int, user_message: str) -> dict[str, Any]:
     if not cand:
         raise ValueError("Candidate not found")
     session = db.get_session(candidate_id)
+    logger.debug(f"Chat turn starting for candidate #{candidate_id} ('{cand.get('full_name')}'): '{user_message[:50]}'")
     db.add_chat(candidate_id, "user", user_message)
 
     if has_llm():
@@ -41,7 +45,8 @@ def start_or_continue(candidate_id: int, user_message: str) -> dict[str, Any]:
             result = _llm_turn(cand, session, user_message)
             result["engine"] = result.get("engine") or "llm"
             return _finalize(candidate_id, session, result)
-        except Exception:
+        except Exception as exc:
+            logger.warning(f"LLM turn failed for candidate #{candidate_id}: {exc}; falling back to scripted dialog")
             result = _scripted_turn(cand, session, user_message)
             result["engine"] = "scripted-fallback"
             return _finalize(candidate_id, session, result)
@@ -123,6 +128,7 @@ def _field(key: str) -> str:
 
 
 def _finalize(candidate_id: int, session: dict, result: dict[str, Any]) -> dict[str, Any]:
+    prev_qualified = bool(session.get("qualified"))
     for key in ("employment_status", "notice_actual", "compensation_notes", "relocation"):
         if result.get(key):
             session[key] = result[key]
@@ -132,6 +138,11 @@ def _finalize(candidate_id: int, session: dict, result: dict[str, Any]) -> dict[
     session["qualified"] = qualified
     session["candidate_id"] = candidate_id
     db.save_session(session)
+
+    if not prev_qualified and qualified:
+        logger.info(f"Candidate #{candidate_id} state transition -> QUALIFIED for interview scheduling")
+    else:
+        logger.debug(f"Candidate #{candidate_id} session updated (qualified={qualified})")
 
     slots: list[dict[str, Any]] = []
     reply = str(result.get("reply") or "")
@@ -148,9 +159,11 @@ def _finalize(candidate_id: int, session: dict, result: dict[str, Any]) -> dict[
     if qualified and chosen:
         try:
             booked = scheduler.book(candidate_id, chosen)
+            logger.info(f"Candidate #{candidate_id} successfully booked slot '{chosen}'")
             reply += f"\n\nBooked {booked['label']}. Status: Scheduled. Calendar invite would be sent via Google/M365 here."
             slots = []
         except ValueError as exc:
+            logger.warning(f"Candidate #{candidate_id} failed to book slot '{chosen}': {exc}")
             reply += f"\n\nCould not book that slot: {exc}"
 
     db.add_chat(candidate_id, "assistant", reply)
