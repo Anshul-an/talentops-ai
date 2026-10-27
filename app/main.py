@@ -242,6 +242,15 @@ def patch_job(jid: int, payload: dict) -> dict:
     return {"job": db.get_job(jid)}
 
 
+@app.post("/api/jobs/{jid}/archive")
+def archive_job(jid: int) -> dict:
+    ok = db.archive_job(jid)
+    if not ok:
+        raise HTTPException(404, "Job not found")
+    logger.info(f"Job #{jid} archived")
+    return {"job_id": jid, "archived": True}
+
+
 @app.post("/jobs")
 @app.post("/api/jobs")
 def create_job(body: JobIn) -> dict:

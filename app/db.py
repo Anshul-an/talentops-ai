@@ -544,3 +544,9 @@ def add_candidate_tag(candidate_id: int, tag: str) -> int:
 def get_candidate_tags(candidate_id: int) -> list[str]:
     rows = fetchall("SELECT tag FROM tags WHERE candidate_id = ?", (candidate_id,))
     return [r["tag"] for r in rows]
+
+
+def archive_job(jid: int) -> bool:
+    with connect() as conn:
+        cur = conn.execute("UPDATE jobs SET client_name = client_name || ' [ARCHIVED]' WHERE id = ?", (jid,))
+        return cur.rowcount > 0
