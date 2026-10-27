@@ -59,3 +59,11 @@ Skills: React, CSS, HTML
     parsed = heuristic_parse(raw)
     assert "location" not in (parsed["full_name"] or "").lower()
     assert parsed["email"] == "sana.q.demo@example.com"
+
+
+def test_parser_empty_text():
+    from app.parser import heuristic_parse
+    parsed = heuristic_parse("")
+    assert parsed["full_name"] is None
+    assert parsed["email"] is None
+    assert parsed["phone"] is None
