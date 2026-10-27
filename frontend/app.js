@@ -249,7 +249,7 @@ async function loadSlots() {
       (i) => `<tr>
         <td>${i.id}</td>
         <td>${esc(i.full_name || i.candidate_id)}</td>
-        <td>${esc(i.slot_time)}</td>
+        <td>${esc(i.slot_time)} (${esc(i.interviewer || "Panel")})</td>
         <td>${esc(i.confirmation_status)}</td>
         <td>
           <button type="button" class="tiny" data-iv="${i.id}" data-act="confirm">Confirm</button>
