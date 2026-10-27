@@ -7,6 +7,12 @@ from app.logging_config import get_logger
 
 logger = get_logger("parser")
 
+EMAIL_PATTERN = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+PHONE_PATTERN = re.compile(r"(?:\+91[\s-]?)?[6-9](?:[\s-]?\d){9}")
+LINKEDIN_PATTERN = re.compile(r"https?://(?:[a-z]{2,3}\.)?linkedin\.com/(?:in|pub)/[A-Za-z0-9\-_/%]+", re.I)
+GITHUB_PATTERN = re.compile(r"https?://(?:www\.)?github\.com/[A-Za-z0-9_-]+", re.I)
+
+
 PARSE_SYSTEM = """You extract structured hiring fields from unstructured resumes.
 Return ONLY a JSON object with these keys (use null when unknown):
 full_name, current_location, preferred_location, email, phone, linkedin_url,
@@ -119,9 +125,9 @@ def _log_coverage(filename: str, parsed: dict[str, Any]) -> None:
 
 
 def heuristic_parse(raw: str) -> dict[str, Any]:
-    email = _first(re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", raw))
+    email = _first(EMAIL_PATTERN.findall(raw))
     phone = _first(
-        re.findall(r"(?:\+91[\s-]?)?[6-9](?:[\s-]?\d){9}", raw)
+        PHONE_PATTERN.findall(raw)
     )
     linkedin = _first(re.findall(r"https?://(?:[a-z]{2,3}\.)?linkedin\.com/(?:in|pub)/[A-Za-z0-9\-_/%]+", raw, re.I))
     if not linkedin:
