@@ -240,6 +240,12 @@ def _int(raw: str, patterns: list[str]) -> Optional[int]:
 
 def _lakhs(raw: str, pattern: str) -> Optional[float]:
     m = re.search(pattern, raw, re.I)
+    if m:
+        return float(m.group(1))
+    lpa_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:lpa|lakhs|lac|lacs)\b", raw, re.I)
+    if lpa_match:
+        return float(lpa_match.group(1))
+    m = re.search(pattern, raw, re.I)
     if not m:
         m = re.search(r"₹\s*(\d+(?:\.\d+)?)\s*L", raw, re.I)
     return float(m.group(1)) if m else None
