@@ -487,3 +487,9 @@ def add_candidate_note(candidate_id: int, note: str, author: str = "Recruiter") 
 
 def get_candidate_notes(candidate_id: int) -> list[dict[str, Any]]:
     return fetchall("SELECT * FROM notes WHERE candidate_id = ? ORDER BY id DESC", (candidate_id,))
+
+
+def update_candidate_status(candidate_id: int, status: str, note: Optional[str] = None) -> None:
+    execute("INSERT INTO timeline (candidate_id, status, note, created_at) VALUES (?, ?, ?, ?)",
+            (candidate_id, status, note or "Manual status update", utcnow()))
+    logger.info(f"Updated candidate #{candidate_id} status to '{status}'")

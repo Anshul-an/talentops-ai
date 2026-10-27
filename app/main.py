@@ -145,6 +145,15 @@ def list_notes(cid: int) -> dict:
     return {"candidate_id": cid, "notes": db.get_candidate_notes(cid)}
 
 
+@app.patch("/api/candidates/{cid}/status")
+def update_candidate_status(cid: int, payload: dict) -> dict:
+    status = payload.get("status")
+    if not status:
+        raise HTTPException(400, "status is required")
+    db.update_candidate_status(cid, status, payload.get("note"))
+    return {"candidate_id": cid, "status": status, "updated": True}
+
+
 @app.get("/candidates/{cid}")
 @app.get("/api/candidates/{cid}")
 def candidate_detail(cid: int) -> dict:
