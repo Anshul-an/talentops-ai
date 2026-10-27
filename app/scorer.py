@@ -95,7 +95,11 @@ def heuristic_score(candidate: dict[str, Any], job: dict[str, Any], threshold: f
     gap_penalty = 0.0
     if candidate.get("career_gap_months") and candidate.get("career_gap_months", 0) > 6:
         gap_penalty = min(8.0, (candidate.get("career_gap_months") - 6) * 0.8)
-    score = round(0.45 * domain + 0.35 * recency + 0.20 * stability + loc_bonus - gap_penalty, 1)
+    cert_bonus = 0.0
+    certs = str(candidate.get("certifications") or "").lower()
+    if any(c in certs for c in ["aws", "azure", "gcp", "pmp", "scrum", "kubernetes", "ckad"]):
+        cert_bonus = 3.5
+    score = round(0.45 * domain + 0.35 * recency + 0.20 * stability + loc_bonus - gap_penalty + cert_bonus, 1)
     bullets = [
         f"Skill overlap with the JD is {'strong' if overlap >= 6 else 'moderate' if overlap >= 3 else 'thin'} ({overlap} matching terms).",
         f"Experience of {years or 'unspecified'} years; recency signal is {'good' if recency >= 75 else 'mixed'}.",
