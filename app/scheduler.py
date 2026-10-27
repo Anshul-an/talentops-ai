@@ -33,6 +33,13 @@ def propose(n: int = 3) -> list[dict[str, Any]]:
 
 
 def book(candidate_id: int, slot_id: str, job_id: Optional[int] = None, stage: str = "L1") -> dict[str, Any]:
+    existing_iv = db.fetchone(
+        "SELECT id FROM interviews WHERE candidate_id = ? AND confirmation_status IN ('Scheduled', 'Confirmed')",
+        (candidate_id,)
+    )
+    if existing_iv:
+        logger.warning(f"Booking rejected: candidate #{candidate_id} already has scheduled interview #{existing_iv['id']}")
+        raise ValueError(f"Candidate already has an active interview (#{existing_iv['id']}).")
     if slot_id in db.booked_slot_ids():
         logger.warning(f"Booking attempt rejected: slot '{slot_id}' already booked")
         raise ValueError("That interview slot is already booked (no double-booking).")
