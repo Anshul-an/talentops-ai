@@ -86,3 +86,9 @@ def test_csv_export_endpoint(client):
     assert res.status_code == 200
     assert "text/csv" in res.headers["content-type"]
     assert "ID,Name" in res.text
+
+
+def test_version_info_endpoint(client):
+    res = client.get("/api/version")
+    assert res.status_code == 200
+    assert res.json()["name"] == "TalentOps AI"
