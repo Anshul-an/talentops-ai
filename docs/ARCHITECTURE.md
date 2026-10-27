@@ -37,3 +37,17 @@ A production CEIPAL integration is mostly a swap of SQLite writes for REST calls
 - FastAPI serves `/api/*` and the static UI from `frontend/`.
 - Default LLM: Anthropic `claude-sonnet-4-5` when `ANTHROPIC_API_KEY` is set.
 - Without a key, parsers, scores, and chat still run so the demo is reviewable offline.
+
+
+## Additional Endpoints (v0.1.0)
+- `GET /api/candidates/search?q=`: Search candidates by full-text query.
+- `POST/GET /api/candidates/{id}/notes`: Recruiter notes CRUD.
+- `PATCH /api/candidates/{id}/status`: Manual status updates.
+- `DELETE /api/candidates/{id}`: Soft-delete candidate.
+- `GET/PATCH /api/jobs/{id}`: Job description inspection and editing.
+- `POST /api/jobs/{id}/archive`: Soft-archive job mandate.
+- `GET /api/dashboard/channel-roi`: Sourcing channel efficiency and cost per acquisition.
+- `GET /api/dashboard/pipeline-velocity`: Sourcing stage cycle times.
+- `GET /api/export/csv`: Export candidates dataset as CSV.
+- `GET /api/version`: Application version and build git sha.
+- `GET /api/health/detailed`: Database health and entity counts.
