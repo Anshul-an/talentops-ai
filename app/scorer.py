@@ -73,7 +73,8 @@ def _log_score(candidate: dict[str, Any], job: dict[str, Any], result: dict[str,
 
 def heuristic_score(candidate: dict[str, Any], job: dict[str, Any], threshold: float) -> dict[str, Any]:
     jd = (job.get("jd_text") or "").lower()
-    skills = str(candidate.get("skills") or "").lower()
+    raw_skills = candidate.get("skills")
+    skills = str(raw_skills or "").lower() if raw_skills is not None else ""
     tokens = {t for t in re.findall(r"[a-z0-9+#.]{3,}", jd) if t not in STOP}
     skill_tokens = set(re.findall(r"[a-z0-9+#.]{2,}", skills))
     overlap = len(tokens & skill_tokens)
