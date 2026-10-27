@@ -33,3 +33,11 @@ def test_chat_reset_session():
     assert len(db.chat_history(cid)) > 0
     chat_agent.reset_session(cid)
     assert len(db.chat_history(cid)) == 0
+
+
+def test_chat_empty_message():
+    from app import chat_agent, db
+    cid, _ = db.upsert_candidate({"full_name": "Empty Chat Test", "email": "empty@test.com"})
+    res = chat_agent.start_or_continue(cid, "")
+    assert "reply" in res
+    assert not res["qualified"]
