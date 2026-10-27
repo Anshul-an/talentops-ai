@@ -406,3 +406,12 @@ $("#chatInput")?.addEventListener("keydown", (e) => {
     $("#chatForm")?.dispatchEvent(new Event("submit"));
   }
 });
+
+$("#btnClearChat")?.addEventListener("click", async () => {
+  const cid = $("#chatCand").value;
+  if (cid) {
+    await api(`/api/chat/${cid}/reset`, { method: "POST" });
+    $("#chatBox").innerHTML = "";
+    showToast("Chat cleared");
+  }
+});
