@@ -24,3 +24,12 @@ def test_scripted_chat_asks_all_four_then_proposes_slots():
     assert r5["captured"]["relocation"]
     assert r5["proposed_slots"]
     assert any("slot-" in s["id"] for s in r5["proposed_slots"])
+
+
+def test_chat_reset_session():
+    from app import chat_agent, db
+    cid, _ = db.upsert_candidate({"full_name": "Reset Test", "email": "reset@test.com"})
+    chat_agent.start_or_continue(cid, "Hello")
+    assert len(db.chat_history(cid)) > 0
+    chat_agent.reset_session(cid)
+    assert len(db.chat_history(cid)) == 0
