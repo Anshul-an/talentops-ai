@@ -50,3 +50,13 @@ def test_scorer_none_skills():
     job = {"title": "Dev", "jd_text": "Python engineer"}
     res = heuristic_score(cand, job, 70.0)
     assert isinstance(res["fitment_score"], float)
+
+
+def test_location_match_bonus():
+    from app.scorer import heuristic_score
+    cand_match = {"full_name": "A", "skills": "python", "current_location": "Bengaluru"}
+    cand_no_match = {"full_name": "B", "skills": "python", "current_location": "Chennai"}
+    job = {"title": "Dev", "jd_text": "Python engineer based in Bengaluru"}
+    score_match = heuristic_score(cand_match, job, 70.0)["fitment_score"]
+    score_no_match = heuristic_score(cand_no_match, job, 70.0)["fitment_score"]
+    assert score_match >= score_no_match
