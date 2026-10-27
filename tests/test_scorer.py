@@ -42,3 +42,11 @@ def test_scorer_clamp_upper_limit():
     job = {"title": "Tech Lead", "jd_text": "Bengaluru python fastapi docker kubernetes aws"}
     res = heuristic_score(cand, job, 70.0)
     assert 0.0 <= res["fitment_score"] <= 100.0
+
+
+def test_scorer_none_skills():
+    from app.scorer import heuristic_score
+    cand = {"full_name": "No Skills", "skills": None, "total_experience_years": None}
+    job = {"title": "Dev", "jd_text": "Python engineer"}
+    res = heuristic_score(cand, job, 70.0)
+    assert isinstance(res["fitment_score"], float)
