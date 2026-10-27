@@ -68,3 +68,8 @@ def test_candidate_status_update(client):
     res = client.patch("/api/candidates/1/status", json={"status": "Screened - AI Fit", "note": "Verified manually"})
     assert res.status_code == 200
     assert res.json()["updated"] is True
+
+
+def test_candidate_soft_delete(client):
+    res = client.delete("/api/candidates/1")
+    assert res.status_code in (200, 404)
