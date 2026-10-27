@@ -1,0 +1,82 @@
+from typing import Any, Optional
+
+from pydantic import BaseModel, Field
+
+
+class CandidateOut(BaseModel):
+    id: int
+    full_name: Optional[str] = None
+    current_location: Optional[str] = None
+    preferred_location: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    total_experience_years: Optional[float] = None
+    relevant_experience_years: Optional[float] = None
+    current_ctc: Optional[float] = None
+    expected_ctc: Optional[float] = None
+    notice_period_days: Optional[int] = None
+    current_company: Optional[str] = None
+    previous_employers: Optional[str] = None
+    skills: Optional[str] = None
+    certifications: Optional[str] = None
+    education: Optional[str] = None
+    source_channel: Optional[str] = None
+    resume_path: Optional[str] = None
+    created_at: Optional[str] = None
+    latest_score: Optional[float] = None
+    latest_status: Optional[str] = None
+    latest_summary: Optional[str] = None
+    parser_engine: Optional[str] = None
+
+
+class JobIn(BaseModel):
+    title: str
+    client_name: str = "Internal / Demo Client"
+    jd_text: str
+
+
+class JobOut(BaseModel):
+    id: int
+    title: str
+    client_name: Optional[str] = None
+    jd_text: str
+    created_at: Optional[str] = None
+
+
+class ScoreRequest(BaseModel):
+    job_id: int
+    candidate_ids: Optional[list[int]] = None
+    threshold: Optional[float] = None
+
+
+class ScoreOut(BaseModel):
+    id: int
+    candidate_id: int
+    job_id: int
+    fitment_score: float
+    summary_bullets: str
+    status: str
+    domain_relevance: Optional[float] = None
+    skill_recency: Optional[float] = None
+    stability_index: Optional[float] = None
+    created_at: Optional[str] = None
+    engine: Optional[str] = None
+
+
+class ChatIn(BaseModel):
+    message: str = Field(..., min_length=1)
+
+
+class ChatOut(BaseModel):
+    reply: str
+    qualified: bool = False
+    captured: dict[str, Any] = Field(default_factory=dict)
+    proposed_slots: list[dict[str, Any]] = Field(default_factory=list)
+    engine: Optional[str] = None
+
+
+class InterviewConfirm(BaseModel):
+    slot_id: Optional[str] = None
+    action: str = "confirm"  # confirm | reschedule | noshow
+    new_slot_id: Optional[str] = None
