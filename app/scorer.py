@@ -4,6 +4,9 @@ from typing import Any
 
 from app.config import FITMENT_THRESHOLD
 from app.llm import complete_json, has_llm
+from app.logging_config import get_logger
+
+logger = get_logger("scorer")
 
 SCORE_SYSTEM = """You are an executive-search screening agent.
 Score a candidate against a job description from 0 to 100.
@@ -38,14 +41,34 @@ def score_candidate(candidate: dict[str, Any], job: dict[str, Any], threshold: f
             data, engine = complete_json(SCORE_SYSTEM, json.dumps(payload, ensure_ascii=False)[:14000])
             result = _normalize_score(data, cutoff)
             result["engine"] = engine
+            _log_score(candidate, job, result)
             return result
-        except Exception:
+        except Exception as exc:
+            logger.warning(f"LLM scoring failed for candidate #{candidate.get('id')}: {exc}; using heuristic scoring")
             result = heuristic_score(candidate, job, cutoff)
             result["engine"] = "heuristic-fallback"
+            _log_score(candidate, job, result)
             return result
     result = heuristic_score(candidate, job, cutoff)
     result["engine"] = "heuristic"
+    _log_score(candidate, job, result)
     return result
+
+
+def _log_score(candidate: dict[str, Any], job: dict[str, Any], result: dict[str, Any]) -> None:
+    logger.info(
+        f"Scored candidate #{candidate.get('id')} ('{candidate.get('full_name')}') vs job '{job.get('title')}': "
+        f"score={result['fitment_score']}, status='{result['status']}', engine='{result['engine']}'",
+        extra={
+            "extra_data": {
+                "candidate_id": candidate.get("id"),
+                "job_id": job.get("id"),
+                "fitment_score": result["fitment_score"],
+                "status": result["status"],
+                "engine": result["engine"],
+            }
+        },
+    )
 
 
 def heuristic_score(candidate: dict[str, Any], job: dict[str, Any], threshold: float) -> dict[str, Any]:
