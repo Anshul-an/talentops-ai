@@ -386,6 +386,17 @@ def get_pipeline_velocity() -> dict:
     return pipeline_velocity()
 
 
+@app.get("/api/stats/summary")
+def stats_summary() -> dict:
+    s = summary()
+    return {
+        "sourced": s.get("sourced", 0),
+        "qualified": s.get("qualified", 0),
+        "avg_fitment": s.get("average_fitment_score", 0),
+        "interviews_booked": s.get("interviews", 0),
+    }
+
+
 @app.get("/dashboard/summary")
 @app.get("/api/dashboard/summary")
 def dashboard_summary() -> dict:
