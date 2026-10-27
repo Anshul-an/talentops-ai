@@ -164,3 +164,6 @@ body.dark-mode .card { background: #1e293b; border-color: #334155; color: #f8faf
 body.dark-mode header.top { border-bottom-color: #334155; }
 
 tr.ai-fit-row { background-color: rgba(16, 185, 129, 0.08); font-weight: 500; }
+
+.channel-chart { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.channel-tag { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; padding: 4px 8px; border-radius: 4px; font-size: 13px; }
