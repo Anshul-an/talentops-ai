@@ -534,3 +534,13 @@ def cancel_interview(iid: int) -> bool:
 
 def get_candidate_timeline(candidate_id: int) -> list[dict[str, Any]]:
     return fetchall("SELECT * FROM timeline WHERE candidate_id = ? ORDER BY id ASC", (candidate_id,))
+
+
+def add_candidate_tag(candidate_id: int, tag: str) -> int:
+    tid = execute("INSERT INTO tags (candidate_id, tag, created_at) VALUES (?, ?, ?)", (candidate_id, tag.strip(), utcnow()))
+    logger.info(f"Added tag '{tag}' to candidate #{candidate_id}")
+    return tid
+
+def get_candidate_tags(candidate_id: int) -> list[str]:
+    rows = fetchall("SELECT tag FROM tags WHERE candidate_id = ?", (candidate_id,))
+    return [r["tag"] for r in rows]

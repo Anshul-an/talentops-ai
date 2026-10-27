@@ -168,6 +168,15 @@ def get_timeline(cid: int) -> dict:
     return {"candidate_id": cid, "timeline": db.get_candidate_timeline(cid)}
 
 
+@app.post("/api/candidates/{cid}/tags")
+def add_tag(cid: int, payload: dict) -> dict:
+    tag = payload.get("tag")
+    if not tag:
+        raise HTTPException(400, "tag is required")
+    tid = db.add_candidate_tag(cid, tag)
+    return {"id": tid, "candidate_id": cid, "tag": tag, "all_tags": db.get_candidate_tags(cid)}
+
+
 @app.get("/candidates/{cid}")
 @app.get("/api/candidates/{cid}")
 def candidate_detail(cid: int) -> dict:
