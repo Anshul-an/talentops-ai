@@ -79,7 +79,8 @@ def heuristic_score(candidate: dict[str, Any], job: dict[str, Any], threshold: f
     overlap = len(tokens & skill_tokens)
     domain = min(95.0, 35 + overlap * 6)
     recency = 70.0
-    if any(k in skills for k in ["fastapi", "python", "claude", "llm", "naukri", "ceipal"]):
+    recent_keywords = ["fastapi", "python", "claude", "llm", "naukri", "ceipal", "react", "docker"]
+    if any(k in skills for k in recent_keywords):
         recency = 82.0
     years = candidate.get("total_experience_years") or 0
     recency = recency if years >= 3 else recency - 8
