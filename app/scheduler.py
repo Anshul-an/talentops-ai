@@ -36,6 +36,7 @@ def propose(n: int = 3) -> list[dict[str, Any]]:
 
 
 def book(candidate_id: int, slot_id: str, job_id: Optional[int] = None, stage: str = "L1") -> dict[str, Any]:
+    """Book an interview slot for a candidate, avoiding double-bookings, and queue reminders."""
     existing_iv = db.fetchone(
         "SELECT id FROM interviews WHERE candidate_id = ? AND confirmation_status IN ('Scheduled', 'Confirmed')",
         (candidate_id,)
