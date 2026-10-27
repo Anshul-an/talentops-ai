@@ -29,6 +29,13 @@ CORE_FIELDS = [
 ]
 
 
+def _normalize_spacing(raw: str) -> str:
+    """Insert clean section breaks if resume text has collapsed newlines."""
+    for header in ["EXPERIENCE", "EDUCATION", "SKILLS", "PROJECTS", "SUMMARY", "CERTIFICATIONS"]:
+        raw = re.sub(rf"(?<=[a-z0-9])({header}:?)", r"\n\1", raw, flags=re.IGNORECASE)
+    return raw
+
+
 def extract_text(path: Path) -> str:
     suffix = path.suffix.lower()
     if suffix == ".pdf":
@@ -59,7 +66,7 @@ def _docx_text(path: Path) -> str:
 
 
 def parse_resume(path: Path, source_channel: str = "Direct upload") -> dict[str, Any]:
-    raw = extract_text(path)
+    raw = _normalize_spacing(extract_text(path))
     if has_llm():
         try:
             data, engine = complete_json(PARSE_SYSTEM, f"Resume filename: {path.name}\n\n{raw[:12000]}")
