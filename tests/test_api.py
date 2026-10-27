@@ -73,3 +73,9 @@ def test_candidate_status_update(client):
 def test_candidate_soft_delete(client):
     res = client.delete("/api/candidates/1")
     assert res.status_code in (200, 404)
+
+
+def test_bulk_score_api(client):
+    res = client.post("/api/score/bulk", json={"job_id": 1, "candidate_ids": [2]})
+    assert res.status_code == 200
+    assert "scores" in res.json()
