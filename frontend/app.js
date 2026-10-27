@@ -184,7 +184,7 @@ $("#runScore").addEventListener("click", async () => {
         </tr>`
       )
       .join("");
-    $("#scoreOut").innerHTML = `<table><thead><tr><th>Candidate</th><th>Score</th><th>Status</th><th>Fitment</th></tr></thead><tbody>${rows}</tbody></table>`;
+    $("#scoreOut").innerHTML = `<table><thead><tr><th>Candidate</th><th>Job Title</th><th>Score</th><th>Status</th><th>Fitment</th></tr></thead><tbody>${rows}</tbody></table>`;
     await refreshCandidates();
   } catch (e) {
     $("#scoreOut").textContent = e.message;
@@ -258,7 +258,7 @@ async function loadSlots() {
       </tr>`
     )
     .join("");
-  $("#ivTable").innerHTML = `<table><thead><tr><th>ID</th><th>Candidate</th><th>Slot</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  $("#ivTable").innerHTML = `<table><thead><tr><th>ID</th><th>Candidate</th><th>Job Title</th><th>Slot</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
   const queued = (data.reminders || []).filter((r) => r.status === "queued").length;
   const sent = (data.reminders || []).filter((r) => r.status === "sent").length;
   if (!$("#reminderLog").dataset.locked) {
