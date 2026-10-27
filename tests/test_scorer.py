@@ -28,3 +28,17 @@ def test_low_overlap_below_threshold():
     result = heuristic_score(weak, JD, threshold=70)
     assert result["status"] == "Sourced - Below Threshold"
     assert result["fitment_score"] < 70
+
+
+def test_scorer_clamp_upper_limit():
+    from app.scorer import heuristic_score
+    cand = {
+        "full_name": "Overqualified Candidate",
+        "skills": "python fastapi docker kubernetes aws react vue angular go rust java c++",
+        "total_experience_years": 15,
+        "current_location": "Bengaluru",
+        "certifications": "AWS Solutions Architect, PMP, Kubernetes CKAD",
+    }
+    job = {"title": "Tech Lead", "jd_text": "Bengaluru python fastapi docker kubernetes aws"}
+    res = heuristic_score(cand, job, 70.0)
+    assert 0.0 <= res["fitment_score"] <= 100.0
