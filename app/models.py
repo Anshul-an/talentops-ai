@@ -93,3 +93,14 @@ class CandidateNote(BaseModel):
     note: str
     author: Optional[str] = "Recruiter"
     created_at: Optional[str] = None
+
+
+class TagIn(BaseModel):
+    tag: str = Field(..., min_length=1)
+
+
+class CandidateTag(BaseModel):
+    id: int
+    candidate_id: int
+    tag: str
+    created_at: Optional[str] = None
