@@ -76,7 +76,7 @@ async function refreshCandidates() {
   if ($("#pipelineBadge")) $("#pipelineBadge").textContent = data.candidates.length;
   const rows = data.candidates.filter(c => !searchTerm || (c.full_name && c.full_name.toLowerCase().includes(searchTerm)) || (c.skills && c.skills.toLowerCase().includes(searchTerm)))
     .map(
-      (c) => `<tr data-cid="${c.id}">
+      (c) => `<tr data-cid="${c.id}" class="${c.latest_status === "Screened - AI Fit" ? "ai-fit-row" : ""}">`
         <td>${c.id}</td>
         <td>${esc(c.full_name)}</td>
         <td>${esc(c.current_location)}</td>

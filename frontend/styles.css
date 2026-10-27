@@ -162,3 +162,5 @@ footer { padding: 0 32px 28px; color: var(--muted); font-size: 12px; }
 body.dark-mode { background: #0f172a; color: #f8fafc; }
 body.dark-mode .card { background: #1e293b; border-color: #334155; color: #f8fafc; }
 body.dark-mode header.top { border-bottom-color: #334155; }
+
+tr.ai-fit-row { background-color: rgba(16, 185, 129, 0.08); font-weight: 500; }
