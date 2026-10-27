@@ -207,6 +207,11 @@ def create_job(body: JobIn) -> dict:
     return {"job": db.get_job(jid)}
 
 
+@app.post("/api/score/bulk")
+def score_bulk(body: ScoreRequest) -> dict:
+    return score(body)
+
+
 @app.post("/score")
 @app.post("/api/score")
 def score(body: ScoreRequest) -> dict:
