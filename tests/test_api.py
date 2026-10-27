@@ -92,3 +92,9 @@ def test_version_info_endpoint(client):
     res = client.get("/api/version")
     assert res.status_code == 200
     assert res.json()["name"] == "TalentOps AI"
+
+
+def test_detailed_health_endpoint(client):
+    res = client.get("/api/health/detailed")
+    assert res.status_code == 200
+    assert "database" in res.json()
