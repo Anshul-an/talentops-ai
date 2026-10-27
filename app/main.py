@@ -1,0 +1,221 @@
+from contextlib import asynccontextmanager
+from typing import Optional
+
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, Response
+from fastapi.staticfiles import StaticFiles
+
+from app import chat_agent, db, scheduler
+from app.config import FRONTEND_DIR, SAMPLE_RESUMES, UPLOAD_DIR
+from app.dashboard import summary
+from app.dossier import build_dossier
+from app.excel_export import build_workbook
+from app.models import ChatIn, InterviewConfirm, JobIn, ScoreRequest
+from app.parser import parse_resume
+from app.scorer import score_candidate
+from app.seed import seed_if_empty
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    db.init_db()
+    seed_if_empty()
+    yield
+
+
+app = FastAPI(
+    title="TalentOps AI",
+    description="Scoped recruitment-automation prototype for Virtuous (AI Intern demo).",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/api/health")
+@app.get("/health")
+def health() -> dict:
+    from app.llm import status as llm_status
+
+    return {"ok": True, **llm_status()}
+
+
+@app.post("/resumes/upload")
+@app.post("/api/resumes/upload")
+async def upload_resumes(
+    files: list[UploadFile] = File(...),
+    source_channel: str = Form("Direct upload"),
+) -> dict:
+    results = []
+    for f in files:
+        dest = UPLOAD_DIR / (f.filename or "resume.bin")
+        dest.write_bytes(await f.read())
+        try:
+            parsed = parse_resume(dest, source_channel=source_channel)
+        except Exception as exc:
+            results.append({"file": dest.name, "error": str(exc)})
+            continue
+        cid, action = db.upsert_candidate(parsed)
+        results.append({"file": dest.name, "candidate_id": cid, "action": action, "parsed": db.get_candidate(cid)})
+    return {"results": results}
+
+
+@app.post("/api/resumes/ingest-samples")
+def ingest_samples() -> dict:
+    files = sorted(p for p in SAMPLE_RESUMES.iterdir() if p.suffix.lower() in {".pdf", ".docx", ".txt"})
+    if not files:
+        raise HTTPException(400, "No sample resumes found. Run: python scripts/generate_samples.py")
+    results = []
+    channels = ["Naukri", "LinkedIn", "Shine", "Inbound email", "Direct upload"]
+    for i, path in enumerate(files):
+        parsed = parse_resume(path, source_channel=channels[i % len(channels)])
+        cid, action = db.upsert_candidate(parsed)
+        results.append({"file": path.name, "candidate_id": cid, "action": action})
+    return {"ingested": len(results), "results": results}
+
+
+@app.get("/candidates")
+@app.get("/api/candidates")
+def candidates(status: Optional[str] = None, source: Optional[str] = None) -> dict:
+    return {"candidates": db.list_candidates(status=status, source=source)}
+
+
+@app.get("/candidates/{cid}")
+@app.get("/api/candidates/{cid}")
+def candidate_detail(cid: int) -> dict:
+    row = db.get_candidate(cid)
+    if not row:
+        raise HTTPException(404, "Candidate not found")
+    scores = db.fetchall("SELECT * FROM scores WHERE candidate_id = ? ORDER BY id DESC", (cid,))
+    chats = db.chat_history(cid)
+    interviews = db.fetchall("SELECT * FROM interviews WHERE candidate_id = ? ORDER BY id DESC", (cid,))
+    session = db.get_session(cid)
+    return {"candidate": row, "scores": scores, "chat": chats, "interviews": interviews, "screening": session}
+
+
+@app.get("/jobs")
+@app.get("/api/jobs")
+def list_jobs() -> dict:
+    return {"jobs": db.list_jobs()}
+
+
+@app.post("/jobs")
+@app.post("/api/jobs")
+def create_job(body: JobIn) -> dict:
+    jid = db.insert_job(body.title, body.client_name, body.jd_text)
+    return {"job": db.get_job(jid)}
+
+
+@app.post("/score")
+@app.post("/api/score")
+def score(body: ScoreRequest) -> dict:
+    job = db.get_job(body.job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    if body.candidate_ids:
+        people = [db.get_candidate(i) for i in body.candidate_ids]
+        people = [p for p in people if p]
+    else:
+        people = db.fetchall("SELECT * FROM candidates")
+    out = []
+    for cand in people:
+        result = score_candidate(cand, job, body.threshold)
+        sid = db.insert_score({**result, "candidate_id": cand["id"], "job_id": body.job_id})
+        out.append({**result, "id": sid, "candidate_id": cand["id"], "job_id": body.job_id})
+    return {"scores": out}
+
+
+@app.post("/chat/{candidate_id}")
+@app.post("/api/chat/{candidate_id}")
+def chat(candidate_id: int, body: ChatIn) -> dict:
+    try:
+        return chat_agent.start_or_continue(candidate_id, body.message)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@app.get("/interviews")
+@app.get("/api/interviews")
+def interviews() -> dict:
+    return {
+        "interviews": db.list_interviews(),
+        "open_slots": scheduler.available_slots(),
+        "reminders": db.list_reminders(),
+    }
+
+
+@app.post("/api/interviews/{iid}/reminders/dispatch")
+def dispatch_reminders(iid: int) -> dict:
+    if not db.fetchone("SELECT id FROM interviews WHERE id = ?", (iid,)):
+        raise HTTPException(404, "Interview not found")
+    return scheduler.dispatch_reminders(iid)
+
+
+@app.post("/api/reminders/dispatch")
+def dispatch_all_reminders() -> dict:
+    return scheduler.dispatch_reminders()
+
+
+@app.get("/api/candidates/{cid}/dossier")
+def candidate_dossier(cid: int, job_id: Optional[int] = None) -> dict:
+    try:
+        return build_dossier(cid, job_id)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@app.post("/interviews/propose/{candidate_id}")
+@app.post("/api/interviews/propose/{candidate_id}")
+def propose(candidate_id: int) -> dict:
+    if not db.get_candidate(candidate_id):
+        raise HTTPException(404, "Candidate not found")
+    return {"slots": scheduler.propose(3)}
+
+
+@app.post("/api/interviews/book/{candidate_id}")
+def book(candidate_id: int, slot_id: str = Query(...), job_id: Optional[int] = None) -> dict:
+    try:
+        return scheduler.book(candidate_id, slot_id, job_id=job_id)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.post("/interviews/confirm/{iid}")
+@app.post("/api/interviews/confirm/{iid}")
+def confirm(iid: int, body: InterviewConfirm) -> dict:
+    try:
+        return scheduler.confirm(iid, body.action, body.new_slot_id)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.get("/dashboard/summary")
+@app.get("/api/dashboard/summary")
+def dashboard_summary() -> dict:
+    return summary()
+
+
+@app.get("/export/excel")
+@app.get("/api/export/excel")
+def export_excel() -> Response:
+    data = build_workbook()
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=TalentOps_MIS.xlsx"},
+    )
+
+
+if FRONTEND_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIR), name="assets")
+
+
+@app.get("/")
+def index() -> FileResponse:
+    return FileResponse(FRONTEND_DIR / "index.html")
