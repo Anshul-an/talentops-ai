@@ -88,7 +88,11 @@ def heuristic_score(candidate: dict[str, Any], job: dict[str, Any], threshold: f
     n_emp = max(len(employers), 1)
     avg_tenure = (years / n_emp) if years else 1.5
     stability = 85.0 if avg_tenure >= 1.8 else 60.0 if avg_tenure >= 1.0 else 45.0
-    score = round(0.45 * domain + 0.35 * recency + 0.20 * stability, 1)
+    loc_bonus = 0.0
+    cand_loc = (candidate.get("current_location") or "").lower()
+    if cand_loc and cand_loc in jd:
+        loc_bonus = 5.0
+    score = round(0.45 * domain + 0.35 * recency + 0.20 * stability + loc_bonus, 1)
     bullets = [
         f"Skill overlap with the JD is {'strong' if overlap >= 6 else 'moderate' if overlap >= 3 else 'thin'} ({overlap} matching terms).",
         f"Experience of {years or 'unspecified'} years; recency signal is {'good' if recency >= 75 else 'mixed'}.",
