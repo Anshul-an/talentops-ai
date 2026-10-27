@@ -98,3 +98,8 @@ def test_detailed_health_endpoint(client):
     res = client.get("/api/health/detailed")
     assert res.status_code == 200
     assert "database" in res.json()
+
+
+def test_interview_cancel_endpoint(client):
+    res = client.delete("/api/interviews/99999")
+    assert res.status_code in (404, 200)
