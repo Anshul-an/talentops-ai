@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app import db
 from app.main import app
 
 
@@ -45,38 +46,47 @@ def test_spec_paths_match_build_plan():
 
 
 def test_search_candidate_by_name(client):
+    db.upsert_candidate({"full_name": "Ananya Rao", "email": "ananya@example.com"})
     res = client.get("/api/candidates/search?q=Ananya")
     assert res.status_code == 200
     assert "candidates" in res.json()
+    assert len(res.json()["candidates"]) >= 1
 
 
 def test_search_candidate_by_skill(client):
+    db.upsert_candidate({"full_name": "Python Dev", "email": "py@example.com", "skills": "Python, Django"})
     res = client.get("/api/candidates/search?q=Python")
     assert res.status_code == 200
     assert "count" in res.json()
+    assert res.json()["count"] >= 1
 
 
 def test_candidate_notes_crud(client):
-    res = client.post("/api/candidates/1/notes", json={"note": "Strong communication skills", "author": "Recruiter A"})
+    cid, _ = db.upsert_candidate({"full_name": "Notes Candidate", "email": "notes@example.com"})
+    res = client.post(f"/api/candidates/{cid}/notes", json={"note": "Strong communication skills", "author": "Recruiter A"})
     assert res.status_code == 200
-    res_list = client.get("/api/candidates/1/notes")
+    res_list = client.get(f"/api/candidates/{cid}/notes")
     assert res_list.status_code == 200
     assert len(res_list.json()["notes"]) >= 1
 
 
 def test_candidate_status_update(client):
-    res = client.patch("/api/candidates/1/status", json={"status": "Screened - AI Fit", "note": "Verified manually"})
+    cid, _ = db.upsert_candidate({"full_name": "Status Candidate", "email": "status@example.com"})
+    res = client.patch(f"/api/candidates/{cid}/status", json={"status": "Screened - AI Fit", "note": "Verified manually"})
     assert res.status_code == 200
     assert res.json()["updated"] is True
 
 
 def test_candidate_soft_delete(client):
-    res = client.delete("/api/candidates/1")
-    assert res.status_code in (200, 404)
+    cid, _ = db.upsert_candidate({"full_name": "Delete Candidate", "email": "del@example.com"})
+    res = client.delete(f"/api/candidates/{cid}")
+    assert res.status_code == 200
 
 
 def test_bulk_score_api(client):
-    res = client.post("/api/score/bulk", json={"job_id": 1, "candidate_ids": [2]})
+    cid, _ = db.upsert_candidate({"full_name": "Bulk Candidate", "email": "bulk@example.com", "skills": "Python, FastAPI"})
+    job = db.list_jobs()[0]
+    res = client.post("/api/score/bulk", json={"job_id": job["id"], "candidate_ids": [cid]})
     assert res.status_code == 200
     assert "scores" in res.json()
 

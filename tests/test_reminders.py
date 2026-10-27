@@ -22,8 +22,13 @@ def test_dossier_contains_name_and_no_email_send():
 
 
 def test_no_double_queueing():
-    from app import scheduler
+    cid, _ = db.upsert_candidate({"full_name": "Reminder Cand", "email": "rc@test.com"})
+    iid = db.insert_interview({
+        "candidate_id": cid,
+        "slot_id": "slot-test-double",
+        "slot_time": "2026-11-01T10:00:00Z",
+    })
     slot = {"id": "slot-test-double", "start": "2026-11-01T10:00:00Z", "label": "Test"}
-    r1 = scheduler.queue_reminders(998, slot)
-    r2 = scheduler.queue_reminders(998, slot)
+    r1 = scheduler.queue_reminders(iid, slot)
+    r2 = scheduler.queue_reminders(iid, slot)
     assert len(r1) == len(r2)
