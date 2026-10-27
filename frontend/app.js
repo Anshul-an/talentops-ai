@@ -388,3 +388,11 @@ function showToast(msg) {
   toast.classList.add("visible");
   setTimeout(() => toast.classList.remove("visible"), 3000);
 }
+
+$("#btnCopyDossier")?.addEventListener("click", () => {
+  const text = $("#dossier").textContent;
+  if (text) {
+    navigator.clipboard.writeText(text);
+    showToast("Dossier copied to clipboard!");
+  }
+});
