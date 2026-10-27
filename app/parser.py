@@ -274,3 +274,15 @@ def _capture(raw: str, pattern: str) -> Optional[str]:
 def _capture_block(raw: str, pattern: str) -> Optional[str]:
     m = re.search(pattern, raw, re.I)
     return m.group(1).strip() if m else None
+
+
+def extraction_confidence(parsed: dict[str, Any]) -> dict[str, float]:
+    """Calculate field-level extraction confidence score from 0.0 to 1.0."""
+    scores = {}
+    scores["email"] = 0.95 if parsed.get("email") and "@" in str(parsed.get("email")) else 0.0
+    scores["phone"] = 0.90 if parsed.get("phone") and len(str(parsed.get("phone"))) >= 10 else 0.0
+    scores["full_name"] = 0.85 if parsed.get("full_name") and len(str(parsed.get("full_name")).split()) >= 2 else 0.3
+    scores["skills"] = 0.80 if parsed.get("skills") else 0.1
+    scores["experience"] = 0.85 if parsed.get("total_experience_years") is not None else 0.2
+    scores["ctc"] = 0.75 if parsed.get("current_ctc") is not None else 0.1
+    return scores
