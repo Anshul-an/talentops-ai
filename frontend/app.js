@@ -400,3 +400,9 @@ $("#btnCopyDossier")?.addEventListener("click", () => {
 $("#themeToggle")?.addEventListener("click", () => {
   document.body.classList.toggle("dark-mode");
 });
+
+$("#chatInput")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+    $("#chatForm")?.dispatchEvent(new Event("submit"));
+  }
+});
