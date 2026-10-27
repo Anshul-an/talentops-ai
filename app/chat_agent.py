@@ -91,7 +91,8 @@ def _scripted_turn(cand: dict, session: dict, user_message: str) -> dict[str, An
             asked.append(nxt)
         session["asked"] = asked
         qtext = dict(QUESTIONS)[nxt]
-        name = cand.get("full_name") or "there"
+        raw_name = cand.get("full_name") or ""
+        name = raw_name.strip().split()[0] if raw_name.strip() else "there"
         if len(asked) == 1:
             reply = (
                 f"Hi {name.split()[0]}, this is the TalentOps screening desk. "
