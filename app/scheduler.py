@@ -7,6 +7,9 @@ from app.logging_config import get_logger
 
 logger = get_logger("scheduler")
 
+DEFAULT_REMINDER_THRESHOLDS = ["T-24h", "T-2h", "T-15m"]
+
+
 # Real Google Workspace / Microsoft Graph calendar sync would replace load_calendar()
 # and booked_slot_ids() with free/busy queries. See docs/MODULE_4_6_NOTES.md.
 
