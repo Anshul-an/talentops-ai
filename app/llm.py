@@ -5,6 +5,9 @@ from typing import Any, Optional
 import httpx
 
 from app import config
+from app.logging_config import get_logger
+
+logger = get_logger("llm")
 
 AUTO_ORDER = ("anthropic", "gemini", "groq", "ollama")
 
@@ -20,14 +23,19 @@ def has_llm() -> bool:
 def active_provider() -> str:
     pref = (config.LLM_PROVIDER or "auto").lower()
     if pref == "heuristic":
+        logger.debug("LLM provider explicitly set to heuristic")
         return "heuristic"
     if pref == "auto":
         for name in AUTO_ORDER:
             if provider_ready(name):
+                logger.info(f"LLM auto-selected provider '{name}'")
                 return name
+        logger.info("No configured external LLM found; falling back to heuristic engine")
         return "heuristic"
     if pref in AUTO_ORDER and provider_ready(pref):
+        logger.info(f"LLM provider active: '{pref}'")
         return pref
+    logger.warning(f"Preferred provider '{pref}' not ready; falling back to heuristic")
     return "heuristic"
 
 
@@ -65,9 +73,17 @@ def complete_json(system: str, user: str, max_tokens: int = 2000) -> tuple[dict[
     """Call the active LLM and parse JSON. Raises if provider is heuristic or the call fails."""
     provider = active_provider()
     if provider == "heuristic":
+        logger.warning("complete_json called but active provider is heuristic")
         raise RuntimeError("No LLM provider configured")
-    text = complete_text(system, user, max_tokens=max_tokens, provider=provider)
-    return _extract_json(text), provider
+    logger.debug(f"Calling LLM provider '{provider}' for JSON completion (max_tokens={max_tokens})")
+    try:
+        text = complete_text(system, user, max_tokens=max_tokens, provider=provider)
+        res = _extract_json(text)
+        logger.debug(f"Successfully received and parsed JSON from provider '{provider}'")
+        return res, provider
+    except Exception as exc:
+        logger.error(f"LLM call to '{provider}' failed: {exc}; fallback will trigger if available")
+        raise
 
 
 def claude_json(system: str, user: str, max_tokens: int = 2000) -> tuple[dict[str, Any], str]:
