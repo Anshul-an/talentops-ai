@@ -530,3 +530,7 @@ def cancel_interview(iid: int) -> bool:
     with connect() as conn:
         cur = conn.execute("UPDATE interviews SET confirmation_status = 'Cancelled' WHERE id = ?", (iid,))
         return cur.rowcount > 0
+
+
+def get_candidate_timeline(candidate_id: int) -> list[dict[str, Any]]:
+    return fetchall("SELECT * FROM timeline WHERE candidate_id = ? ORDER BY id ASC", (candidate_id,))

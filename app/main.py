@@ -163,6 +163,11 @@ def delete_candidate(cid: int) -> dict:
     return {"candidate_id": cid, "deleted": True}
 
 
+@app.get("/api/candidates/{cid}/timeline")
+def get_timeline(cid: int) -> dict:
+    return {"candidate_id": cid, "timeline": db.get_candidate_timeline(cid)}
+
+
 @app.get("/candidates/{cid}")
 @app.get("/api/candidates/{cid}")
 def candidate_detail(cid: int) -> dict:
