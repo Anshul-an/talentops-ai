@@ -126,3 +126,11 @@ class SearchResult(BaseModel):
     query: str
     count: int
     candidates: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class PipelineVelocity(BaseModel):
+    sourced_to_screened_days: float
+    screened_to_interview_days: float
+    interview_to_offer_days: float
+    offer_to_join_days: float
+    avg_total_days: float
