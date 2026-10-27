@@ -171,3 +171,16 @@ class DetailedHealth(BaseModel):
 class BulkScoreRequest(ScoreRequest):
     batch_name: Optional[str] = None
     priority: Optional[str] = "normal"
+
+
+class InterviewDetail(BaseModel):
+    id: int
+    candidate_id: int
+    job_id: Optional[int] = None
+    stage: str
+    slot_id: Optional[str] = None
+    slot_time: Optional[str] = None
+    confirmation_status: str
+    created_at: Optional[str] = None
+    full_name: Optional[str] = None
+    email: Optional[str] = None
