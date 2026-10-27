@@ -8,6 +8,13 @@ from app.logging_config import get_logger
 
 logger = get_logger("scorer")
 
+WEIGHT_DOMAIN = 0.45
+WEIGHT_RECENCY = 0.35
+WEIGHT_STABILITY = 0.20
+MAX_LOCATION_BONUS = 5.0
+CERTIFICATION_BONUS = 3.5
+
+
 SCORE_SYSTEM = """You are an executive-search screening agent.
 Score a candidate against a job description from 0 to 100.
 Consider:
@@ -101,7 +108,7 @@ def heuristic_score(candidate: dict[str, Any], job: dict[str, Any], threshold: f
     certs = str(candidate.get("certifications") or "").lower()
     if any(c in certs for c in ["aws", "azure", "gcp", "pmp", "scrum", "kubernetes", "ckad"]):
         cert_bonus = 3.5
-    raw_total = 0.45 * domain + 0.35 * recency + 0.20 * stability + loc_bonus - gap_penalty + cert_bonus
+    raw_total = WEIGHT_DOMAIN * domain + WEIGHT_RECENCY * recency + WEIGHT_STABILITY * stability + loc_bonus - gap_penalty + cert_bonus
     score = round(max(0.0, min(100.0, raw_total)), 1)
     bullets = [
         f"Skill overlap with the JD is {'strong' if overlap >= 6 else 'moderate' if overlap >= 3 else 'thin'} ({overlap} matching terms).",
