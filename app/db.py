@@ -141,6 +141,7 @@ def connect() -> Iterator[sqlite3.Connection]:
 
 
 def init_db() -> None:
+    """Initialize SQLite database schema and create required indexes."""
     with connect() as conn:
         conn.executescript(SCHEMA + '''
 CREATE INDEX IF NOT EXISTS idx_candidates_email ON candidates(email);
