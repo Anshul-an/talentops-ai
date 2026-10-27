@@ -375,3 +375,16 @@ function sortTable(key) {
   else { sortKey = key; sortAsc = true; }
   refreshCandidates();
 }
+
+function showToast(msg) {
+  let toast = $("#toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toast";
+    toast.className = "toast";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.add("visible");
+  setTimeout(() => toast.classList.remove("visible"), 3000);
+}
