@@ -3,6 +3,9 @@ from pathlib import Path
 from typing import Any, Optional
 
 from app.llm import complete_json, has_llm, optional_str
+from app.logging_config import get_logger
+
+logger = get_logger("parser")
 
 PARSE_SYSTEM = """You extract structured hiring fields from unstructured resumes.
 Return ONLY a JSON object with these keys (use null when unknown):
@@ -13,6 +16,17 @@ notice_period_days (integer), current_company,
 previous_employers (array of strings), skills (array of strings),
 certifications (array of strings), education (short string).
 CTC must be numeric lakhs if possible. Do not invent contact details."""
+
+CORE_FIELDS = [
+    "full_name",
+    "email",
+    "phone",
+    "current_location",
+    "skills",
+    "total_experience_years",
+    "current_ctc",
+    "notice_period_days",
+]
 
 
 def extract_text(path: Path) -> str:
@@ -54,18 +68,40 @@ def parse_resume(path: Path, source_channel: str = "Direct upload") -> dict[str,
             parsed["source_channel"] = source_channel
             parsed["resume_path"] = str(path)
             parsed["raw_excerpt"] = raw[:500]
+            _log_coverage(path.name, parsed)
             return parsed
-        except Exception:
+        except Exception as exc:
+            logger.warning(f"LLM parsing failed for {path.name}: {exc}; falling back to heuristic parser")
             parsed = _normalize(heuristic_parse(raw))
             parsed["parser_engine"] = "heuristic-fallback"
             parsed["source_channel"] = source_channel
             parsed["resume_path"] = str(path)
+            _log_coverage(path.name, parsed)
             return parsed
     parsed = _normalize(heuristic_parse(raw))
     parsed["parser_engine"] = "heuristic"
     parsed["source_channel"] = source_channel
     parsed["resume_path"] = str(path)
+    _log_coverage(path.name, parsed)
     return parsed
+
+
+def _log_coverage(filename: str, parsed: dict[str, Any]) -> None:
+    filled = sum(1 for f in CORE_FIELDS if parsed.get(f) not in (None, "", []))
+    coverage_pct = round((filled / len(CORE_FIELDS)) * 100, 1)
+    logger.info(
+        f"Parsed '{filename}' [{parsed.get('parser_engine')}]: "
+        f"name='{parsed.get('full_name')}', email='{parsed.get('email')}', "
+        f"coverage={filled}/{len(CORE_FIELDS)} ({coverage_pct}%)",
+        extra={
+            "extra_data": {
+                "file": filename,
+                "engine": parsed.get("parser_engine"),
+                "coverage_pct": coverage_pct,
+                "filled_fields": filled,
+            }
+        },
+    )
 
 
 def heuristic_parse(raw: str) -> dict[str, Any]:
