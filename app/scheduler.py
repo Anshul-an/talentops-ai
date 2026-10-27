@@ -127,3 +127,12 @@ def confirm(interview_id: int, action: str, new_slot_id: Optional[str] = None) -
         logger.info(f"Interview #{interview_id} rescheduled to slot '{new_slot_id}' ({slot['start']})")
         return {**row, "slot_id": new_slot_id, "slot_time": slot["start"], "confirmation_status": "Rescheduled"}
     raise ValueError("action must be confirm, reschedule, or noshow")
+
+
+def format_slot_label(start_iso: str) -> str:
+    from datetime import datetime
+    try:
+        dt = datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
+        return dt.strftime("%A, %b %d at %I:%M %p")
+    except Exception:
+        return start_iso
