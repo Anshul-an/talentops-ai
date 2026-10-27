@@ -142,7 +142,12 @@ def connect() -> Iterator[sqlite3.Connection]:
 
 def init_db() -> None:
     with connect() as conn:
-        conn.executescript(SCHEMA)
+        conn.executescript(SCHEMA + '''
+CREATE INDEX IF NOT EXISTS idx_candidates_email ON candidates(email);
+CREATE INDEX IF NOT EXISTS idx_scores_candidate ON scores(candidate_id);
+CREATE INDEX IF NOT EXISTS idx_scores_job ON scores(job_id);
+CREATE INDEX IF NOT EXISTS idx_interviews_slot ON interviews(slot_id);
+''')
 
 
 def row_to_dict(row: Optional[sqlite3.Row]) -> Optional[dict[str, Any]]:
