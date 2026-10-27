@@ -16,9 +16,15 @@ def load_calendar() -> dict[str, Any]:
 
 
 def available_slots() -> list[dict[str, Any]]:
+    recruiters = ["Aisha Khan", "Vikram Malhotra", "Sneha Roy", "Rohan Joshi"]
     booked = db.booked_slot_ids()
     cal = load_calendar()
-    open_slots = [s for s in cal["slots"] if s["id"] not in booked]
+    open_slots = []
+    for i, s in enumerate(cal["slots"]):
+        if s["id"] not in booked:
+            slot_copy = dict(s)
+            slot_copy["interviewer"] = recruiters[i % len(recruiters)]
+            open_slots.append(slot_copy)
     return open_slots
 
 
