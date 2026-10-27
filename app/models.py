@@ -134,3 +134,16 @@ class PipelineVelocity(BaseModel):
     interview_to_offer_days: float
     offer_to_join_days: float
     avg_total_days: float
+
+
+class ChannelROIItem(BaseModel):
+    channel: str
+    spend: float
+    sourced: int
+    qualified: int
+    avg_score: float
+    cpa: Optional[float] = None
+
+
+class ChannelROI(BaseModel):
+    channels: list[ChannelROIItem] = Field(default_factory=list)
