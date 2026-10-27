@@ -67,3 +67,11 @@ def test_parser_empty_text():
     assert parsed["full_name"] is None
     assert parsed["email"] is None
     assert parsed["phone"] is None
+
+
+def test_parser_all_caps_resume():
+    from app.parser import heuristic_parse
+    raw = "RAHUL SHARMA\nEMAIL: RAHUL@EXAMPLE.COM\nTOTAL EXPERIENCE: 5 YEARS\nSKILLS: PYTHON, FASTAPI"
+    parsed = heuristic_parse(raw)
+    assert parsed["full_name"] == "Rahul Sharma"
+    assert parsed["email"] == "RAHUL@EXAMPLE.COM"
