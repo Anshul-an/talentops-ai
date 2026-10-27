@@ -54,3 +54,11 @@ def test_search_candidate_by_skill(client):
     res = client.get("/api/candidates/search?q=Python")
     assert res.status_code == 200
     assert "count" in res.json()
+
+
+def test_candidate_notes_crud(client):
+    res = client.post("/api/candidates/1/notes", json={"note": "Strong communication skills", "author": "Recruiter A"})
+    assert res.status_code == 200
+    res_list = client.get("/api/candidates/1/notes")
+    assert res_list.status_code == 200
+    assert len(res_list.json()["notes"]) >= 1
