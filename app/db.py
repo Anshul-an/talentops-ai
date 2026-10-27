@@ -597,3 +597,12 @@ def restore_candidate(candidate_id: int) -> bool:
     with connect() as conn:
         cur = conn.execute("UPDATE candidates SET parser_engine = 'restored' WHERE id = ?", (candidate_id,))
         return cur.rowcount > 0
+
+
+def get_job_with_stats(jid: int) -> Optional[dict[str, Any]]:
+    job = get_job(jid)
+    if not job:
+        return None
+    scores = fetchall("SELECT fitment_score FROM scores WHERE job_id = ?", (jid,))
+    avg_score = round(sum(s["fitment_score"] for s in scores) / len(scores), 1) if scores else None
+    return {**job, "scored_candidates_count": len(scores), "avg_fitment_score": avg_score}
