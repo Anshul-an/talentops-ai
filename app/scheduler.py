@@ -80,7 +80,7 @@ REMINDER_COPY = [
 
 def queue_reminders(interview_id: int, slot: dict[str, Any]) -> list[dict[str, Any]]:
     existing = db.list_reminders(interview_id)
-    if existing:
+    if existing and len(existing) >= len(REMINDER_COPY):
         logger.debug(f"Reminders already queued for interview #{interview_id}; skipping duplicate queue")
         return existing
     created = []
