@@ -81,3 +81,10 @@ def test_ollama_json_via_mocked_http(monkeypatch):
     data, engine = llm.complete_json("sys", "user")
     assert engine == "ollama"
     assert data["full_name"] == "Ananya Rao"
+
+
+def test_llm_json_extractor_fallback():
+    from app.llm import _extract_json
+    raw_response = "```json\n{\"fitment_score\": 88}\n```"
+    parsed = _extract_json(raw_response)
+    assert parsed["fitment_score"] == 88
