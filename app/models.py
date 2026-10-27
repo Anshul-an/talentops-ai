@@ -104,3 +104,19 @@ class CandidateTag(BaseModel):
     candidate_id: int
     tag: str
     created_at: Optional[str] = None
+
+from enum import Enum
+
+
+class CandidateStatusEnum(str, Enum):
+    SOURCED_UNSCORED = "Sourced - Unscored"
+    SCREENED_AI_FIT = "Screened - AI Fit"
+    SOURCED_BELOW_THRESHOLD = "Sourced - Below Threshold"
+    INTERVIEW_SCHEDULED = "Interview Scheduled"
+    OFFERED = "Offered"
+    REJECTED = "Rejected"
+
+
+class StatusUpdateIn(BaseModel):
+    status: str
+    note: Optional[str] = None
