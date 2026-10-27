@@ -591,3 +591,9 @@ def record_timeline_event(candidate_id: int, status: str, note: Optional[str] = 
         "INSERT INTO timeline (candidate_id, status, note, created_at) VALUES (?, ?, ?, ?)",
         (candidate_id, status, note or "System update", utcnow()),
     )
+
+
+def restore_candidate(candidate_id: int) -> bool:
+    with connect() as conn:
+        cur = conn.execute("UPDATE candidates SET parser_engine = 'restored' WHERE id = ?", (candidate_id,))
+        return cur.rowcount > 0
