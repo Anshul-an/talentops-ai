@@ -7,11 +7,16 @@ from app.logging_config import get_logger
 
 logger = get_logger("chat_agent")
 
+Q_EMPLOYMENT = "Are you currently employed, serving notice, or immediately available?"
+Q_NOTICE = "What is your actual last working day / notice period, and is a buyout negotiable vs what is printed on paper?"
+Q_COMPENSATION = "Please share current fixed + variable CTC and your expected CTC (annual, INR)."
+Q_RELOCATION = "Are you open to relocating, and is hybrid / in-office attendance feasible for this mandate?"
+
 QUESTIONS = [
-    ("employment", "Are you currently employed, serving notice, or immediately available?"),
-    ("notice", "What is your actual last working day / notice period, and is a buyout negotiable vs what is printed on paper?"),
-    ("compensation", "Please share current fixed + variable CTC and your expected CTC (annual, INR)."),
-    ("relocation", "Are you open to relocating, and is hybrid / in-office attendance feasible for this mandate?"),
+    ("employment", Q_EMPLOYMENT),
+    ("notice", Q_NOTICE),
+    ("compensation", Q_COMPENSATION),
+    ("relocation", Q_RELOCATION),
 ]
 
 CHAT_SYSTEM = """You are Virtuous' candidate pre-screening agent (demo).
