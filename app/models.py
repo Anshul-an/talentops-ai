@@ -120,3 +120,9 @@ class CandidateStatusEnum(str, Enum):
 class StatusUpdateIn(BaseModel):
     status: str
     note: Optional[str] = None
+
+
+class SearchResult(BaseModel):
+    query: str
+    count: int
+    candidates: list[dict[str, Any]] = Field(default_factory=list)
