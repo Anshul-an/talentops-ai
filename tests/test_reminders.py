@@ -19,3 +19,11 @@ def test_dossier_contains_name_and_no_email_send():
     pack = build_dossier(cid)
     assert "Ananya Rao" in pack["markdown"]
     assert pack["delivery"] == "local-preview"
+
+
+def test_no_double_queueing():
+    from app import scheduler
+    slot = {"id": "slot-test-double", "start": "2026-11-01T10:00:00Z", "label": "Test"}
+    r1 = scheduler.queue_reminders(998, slot)
+    r2 = scheduler.queue_reminders(998, slot)
+    assert len(r1) == len(r2)
