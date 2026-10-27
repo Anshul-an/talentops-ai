@@ -250,6 +250,15 @@ def get_interview_detail(iid: int) -> dict:
     return {"interview": iv, "reminders": reminders}
 
 
+@app.delete("/api/interviews/{iid}")
+def cancel_interview_endpoint(iid: int) -> dict:
+    ok = db.cancel_interview(iid)
+    if not ok:
+        raise HTTPException(404, "Interview not found")
+    logger.info(f"Interview #{iid} cancelled")
+    return {"interview_id": iid, "status": "Cancelled"}
+
+
 @app.get("/interviews")
 @app.get("/api/interviews")
 def interviews() -> dict:

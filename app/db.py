@@ -524,3 +524,9 @@ def get_interview(iid: int) -> Optional[dict[str, Any]]:
         "SELECT i.*, c.full_name, c.email FROM interviews i LEFT JOIN candidates c ON c.id = i.candidate_id WHERE i.id = ?",
         (iid,),
     )
+
+
+def cancel_interview(iid: int) -> bool:
+    with connect() as conn:
+        cur = conn.execute("UPDATE interviews SET confirmation_status = 'Cancelled' WHERE id = ?", (iid,))
+        return cur.rowcount > 0
