@@ -328,6 +328,12 @@ def confirm(iid: int, body: InterviewConfirm) -> dict:
         raise HTTPException(400, str(exc)) from exc
 
 
+@app.get("/api/dashboard/channel-roi")
+def get_channel_roi() -> dict:
+    from app.dashboard import channel_roi
+    return channel_roi()
+
+
 @app.get("/dashboard/summary")
 @app.get("/api/dashboard/summary")
 def dashboard_summary() -> dict:

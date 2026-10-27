@@ -101,3 +101,30 @@ def summary() -> dict[str, Any]:
         "avg_time_to_fill_days": 34,
         "reminders": _reminder_counts(),
     }
+
+
+def channel_roi() -> dict[str, Any]:
+    cands = db.list_candidates()
+    spend_map = {"Naukri": 45000, "LinkedIn": 62000, "Shine": 18000, "Direct upload": 0, "Inbound email": 0}
+    by_channel: dict[str, dict] = {}
+    for c in cands:
+        ch = c.get("source_channel") or "Unknown"
+        stats = by_channel.setdefault(ch, {"sourced": 0, "qualified": 0, "scores": []})
+        stats["sourced"] += 1
+        if (c.get("latest_status") or "") == "Screened - AI Fit":
+            stats["qualified"] += 1
+        if c.get("latest_score"):
+            stats["scores"].append(float(c["latest_score"]))
+    results = []
+    for ch, d in by_channel.items():
+        spend = spend_map.get(ch, 12000)
+        avg_score = round(sum(d["scores"]) / len(d["scores"]), 1) if d["scores"] else 0.0
+        results.append({
+            "channel": ch,
+            "spend": spend,
+            "sourced": d["sourced"],
+            "qualified": d["qualified"],
+            "avg_score": avg_score,
+            "cpa": round(spend / d["qualified"], 2) if d["qualified"] else None,
+        })
+    return {"channels": results}
