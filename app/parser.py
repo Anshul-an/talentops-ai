@@ -116,7 +116,11 @@ def heuristic_parse(raw: str) -> dict[str, Any]:
     phone = _first(
         re.findall(r"(?:\+91[\s-]?)?[6-9](?:[\s-]?\d){9}", raw)
     )
-    linkedin = _first(re.findall(r"https?://(?:www\.)?linkedin\.com/in/[A-Za-z0-9\-_/]+", raw, re.I))
+    linkedin = _first(re.findall(r"https?://(?:[a-z]{2,3}\.)?linkedin\.com/(?:in|pub)/[A-Za-z0-9\-_/%]+", raw, re.I))
+    if not linkedin:
+        linkedin = _first(re.findall(r"linkedin\.com/in/[A-Za-z0-9\-_]+", raw, re.I))
+        if linkedin:
+            linkedin = f"https://{linkedin}"
     lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
     name = None
     for ln in lines[:8]:
