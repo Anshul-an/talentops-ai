@@ -147,3 +147,9 @@ class ChannelROIItem(BaseModel):
 
 class ChannelROI(BaseModel):
     channels: list[ChannelROIItem] = Field(default_factory=list)
+
+
+class VersionInfo(BaseModel):
+    name: str = "TalentOps AI"
+    version: str = "0.1.0"
+    git_sha: str = "unknown"
