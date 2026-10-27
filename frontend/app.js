@@ -396,3 +396,7 @@ $("#btnCopyDossier")?.addEventListener("click", () => {
     showToast("Dossier copied to clipboard!");
   }
 });
+
+$("#themeToggle")?.addEventListener("click", () => {
+  document.body.classList.toggle("dark-mode");
+});
