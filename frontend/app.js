@@ -366,3 +366,11 @@ function recruiterTable(rows) {
 boot();
 
 $("#candSearch")?.addEventListener("input", () => refreshCandidates());
+
+let sortKey = "id";
+let sortAsc = true;
+function sortTable(key) {
+  if (sortKey === key) sortAsc = !sortAsc;
+  else { sortKey = key; sortAsc = true; }
+  refreshCandidates();
+}
