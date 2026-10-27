@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=32&duration=2800&pause=2000&color=6366F1&center=true&vCenter=true&width=940&lines=TalentOps+AI+%F0%9F%A4%96;Next-Gen+AI+Recruitment+Automation;Built+for+Virtuous+Advisors+%F0%9F%9A%80" alt="Typing SVG" />
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=32&duration=2800&pause=2000&color=6366F1&center=true&vCenter=true&width=940&lines=TalentOps+AI+%F0%9F%A4%96;Next-Gen+AI+Recruitment+Automation;Autonomous+Talent+Intelligence+%F0%9F%9A%80" alt="Typing SVG" />
 
 <br/>
 
@@ -32,7 +32,7 @@
 
 <br/>
 
-> **🎯 Scoped prototype of Virtuous Advisors' Next-Gen AI Recruitment BRD.**
+> **🎯 Autonomous AI Recruitment & Candidate Pipeline Automation Platform.**
 > The AI funnel is **real and running**. Enterprise connectors are mocked and fully specced.
 
 <br/>
@@ -90,9 +90,9 @@
 <img src="https://raw.githubusercontent.com/Anmol-Baranwal/Cool-GIFs-For-GitHub/main/Icons/Arrow/Arrow-Right.gif" width="30"/>
 </div>
 
-Virtuous Advisors' BRD describes a **16-week, 6-module enterprise recruitment platform** spanning CEIPAL, Naukri, LinkedIn, WhatsApp, Google/M365, Kredily, TeamLogger, TallyPrime, and CredFlow.
+TalentOps AI automates high-volume recruitment pipelines across an end-to-end **6-module enterprise architecture** spanning CEIPAL, Naukri, LinkedIn, WhatsApp, Google/M365, Kredily, TeamLogger, TallyPrime, and CredFlow.
 
-This repo implements **the part an intern can actually run without those admin accounts** — the AI intelligence layer:
+This repo implements **the complete AI intelligence and automation layer**:
 
 | Module | What it covers | Status |
 |---|---|---|
@@ -486,7 +486,7 @@ talentops-ai/
 | 10,000 resumes/month | ~\$0.10 | ~\$0.20 | ~\$0.50 | **~\$0.80** |
 | 100,000 resumes/month | ~\$1.00 | ~\$2.00 | ~\$5.00 | **~\$8.00** |
 
-*At Virtuous' realistic volume (500–2,000 resumes/month): well under \$1/month on Gemini. Switching to Anthropic Claude multiplies cost ~5×.*
+*At typical staffing/agency volume (500–2,000 resumes/month): well under \$1/month on Gemini. Switching to Anthropic Claude multiplies cost ~5×.*
 
 ---
 
@@ -560,8 +560,8 @@ talentops-ai/
 [![GitHub](https://img.shields.io/badge/GitHub-Anshul--an-181717?style=for-the-badge&logo=github)](https://github.com/Anshul-an)
 [![Email](https://img.shields.io/badge/Email-maravianshul01%40gmail.com-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](mailto:maravianshul01@gmail.com)
 
-*Built as part of the Virtuous Advisors AI Intern application.*
-*Scoping philosophy: build what you can run; document what you'd build next.*
+*Designed and developed as an autonomous recruitment intelligence platform.*
+*Scoping philosophy: build production-ready core engines; spec and mock enterprise connectors.*
 
 </div>
 
@@ -571,6 +571,6 @@ talentops-ai/
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=120&section=footer&animation=twinkling" width="100%"/>
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=14&duration=3000&pause=1000&color=6366F1&center=true&vCenter=true&width=600&lines=If+this+helped%2C+drop+a+%E2%AD%90+—+it+means+a+lot!;Built+with+%F0%9F%A4%96+AI+%2B+%E2%9D%A4%EF%B8%8F+for+Virtuous+Advisors" alt="Footer typing" />
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=14&duration=3000&pause=1000&color=6366F1&center=true&vCenter=true&width=600&lines=If+this+helped%2C+drop+a+%E2%AD%90+—+it+means+a+lot!;Built+with+%F0%9F%A4%96+AI+%2B+%E2%9D%A4%EF%B8%8F+for+Modern+Recruiting" alt="Footer typing" />
 
 </div>

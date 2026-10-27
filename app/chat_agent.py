@@ -19,7 +19,7 @@ QUESTIONS = [
     ("relocation", Q_RELOCATION),
 ]
 
-CHAT_SYSTEM = """You are Virtuous' candidate pre-screening agent (demo).
+CHAT_SYSTEM = """You are an autonomous candidate pre-screening agent for TalentOps AI.
 You must collect four facts, one at a time if missing:
 employment_status, notice_actual, compensation_notes, relocation.
 Be concise, professional, and warm. Do not ask for Aadhaar/PAN or other sensitive IDs.

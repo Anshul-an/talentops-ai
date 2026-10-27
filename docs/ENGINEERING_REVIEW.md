@@ -171,7 +171,7 @@ This is called on every `GET /api/version`. If the deployment environment doesn'
 
 ---
 
-### [MEDIUM] — Should fix before sharing with Virtuous team or going to staging
+### [MEDIUM] — Should fix before sharing with Engineering team or going to staging
 
 ---
 
@@ -310,7 +310,7 @@ Line 188: `"relevant_experience_years": exp` — same value as total experience.
 #### L-4 · `search_candidates()` uses `LIKE '%query%'` — no FTS, slow on large tables
 **Raised by:** Database Expert
 
-`LIKE '%term%'` cannot use any index. On a table with 50,000 resumes (realistic for Virtuous after 6 months), a full-table scan across `full_name`, `skills`, `current_company`, `email` (4 LIKE clauses in OR) will be slow. Document this as a scaling note and consider SQLite FTS5 (`CREATE VIRTUAL TABLE candidates_fts USING fts5(...)`) for the real integration.
+`LIKE '%term%'` cannot use any index. On a table with 50,000 resumes (realistic for TalentOps after 6 months), a full-table scan across `full_name`, `skills`, `current_company`, `email` (4 LIKE clauses in OR) will be slow. Document this as a scaling note and consider SQLite FTS5 (`CREATE VIRTUAL TABLE candidates_fts USING fts5(...)`) for the real integration.
 
 ---
 
@@ -415,7 +415,7 @@ The current frontend uses `el.textContent = text` for chat bubbles (safe), but `
 
 ---
 
-*This review was produced by a simulated senior engineering panel for the Virtuous AI Intern application. All issues are genuine code observations, not fabricated.*
+*This review was produced by a simulated senior engineering panel for the TalentOps AI production readiness review. All issues are genuine code observations, not fabricated.*
 
 ---
 
@@ -469,9 +469,9 @@ openpyxl>=3.1.5
 
 `README.md` Quick Start Step 1 reads:
 ```
-cd C:\Users\lenovo\Desktop\Virtuous automation\talentops-ai
+cd C:\Users\lenovo\Desktop\TalentOps automation\talentops-ai
 ```
-This is Anshul's laptop path. On any other machine this command fails with `No such file or directory`. A cold-clone reviewer (Virtuous hiring team) will see this as the very first instruction and lose trust in the entire document.
+This is Anshul's laptop path. On any other machine this command fails with `No such file or directory`. A cold-clone reviewer (Technical evaluation panel) will see this as the very first instruction and lose trust in the entire document.
 
 **Fix:** Replace with:
 ```bash
@@ -493,7 +493,7 @@ BRD-F-202 states explicitly:
 
 `scorer.py` `heuristic_score()` (lines 55-130) uses Python `set.intersection()` on lowercased token lists — the textbook definition of "simplistic keyword searching." The LLM path (`llm_score()`) does use a language model but zero vector similarity is computed anywhere. `requirements.txt` contains no embedding library (no `sentence-transformers`, `faiss-cpu`, `chromadb`, or `pgvector`).
 
-The README and `ARCHITECTURE.md` both describe scoring as "semantic fitment" without acknowledging this gap. A Virtuous technical reviewer will check the BRD, then check the code, and find the delta immediately.
+The README and `ARCHITECTURE.md` both describe scoring as "semantic fitment" without acknowledging this gap. A Senior technical reviewer will check the BRD, then check the code, and find the delta immediately.
 
 **Recommended fix:** Add one honest sentence to README under "What's real vs mocked":
 > *"BRD-F-202 (vector embeddings): Fitment uses LLM-scored JSON + keyword heuristic fallback. True sentence-embedding similarity (e.g. `sentence-transformers`) is an identified future upgrade; see `docs/ARCHITECTURE.md §Scoring`."*
@@ -597,7 +597,7 @@ The README "API Endpoints" section lists 18 routes. The actual running app (from
 - `POST /jobs/{id}/archive`
 - `GET /jobs/{id}/candidates`
 
-None of these appear in the README table. A new developer or the Virtuous API reviewer will open Swagger (`/docs`) and see a superset of what the README describes, causing confusion about what is "real."
+None of these appear in the README table. A new developer or the TalentOps API reviewer will open Swagger (`/docs`) and see a superset of what the README describes, causing confusion about what is "real."
 
 **Fix:** Either regenerate the table from the OpenAPI spec (`GET /openapi.json | jq '.paths | keys'`) or add a note: *"See `/docs` (Swagger UI) for the complete, auto-generated API reference."*
 
@@ -751,7 +751,7 @@ Even if B-1 (missing `WHERE` filter) is fixed, the underlying approach of using 
 
 `docs/MODULE_4_6_NOTES.md` is one of the strongest documents in the repo: 15-minute Kredily polling interval, TeamLogger webhook signature, Tally XML-over-HTTP WSDL path, CredFlow aging bucket logic, two-stage commission release. These are specific, technically plausible, and demonstrate that the author understands the integration landscape.
 
-However, the README never mentions this file. A Virtuous evaluator reading only the README will miss the most credible technical depth document in the project.
+However, the README never mentions this file. A TalentOps evaluator reading only the README will miss the most credible technical depth document in the project.
 
 **Fix:** Add one line to README under "Documentation":
 ```markdown
@@ -799,7 +799,7 @@ cv_select_ratio = 0.42
 interview_to_offer = 0.28
 offer_to_join = 0.71
 ```
-These are industry-average benchmarks hardcoded as floats with no comment explaining their source or the fact that they are static estimates. A Virtuous hiring manager who sees "42% CV selection rate" on the dashboard may believe this reflects real pipeline data.
+These are industry-average benchmarks hardcoded as floats with no comment explaining their source or the fact that they are static estimates. A Senior engineering evaluator who sees "42% CV selection rate" on the dashboard may believe this reflects real pipeline data.
 
 **Fix:** Add comments:
 ```python
@@ -937,7 +937,7 @@ PEP 604 union syntax (`X | Y`) requires Python ≥ 3.10. README says "Python 3.9
 ## What Panel 3 Agrees Is Done Well
 
 - ✅ **`MODULE_4_6_NOTES.md` is genuinely impressive** — Kredily 15-minute polling, TeamLogger HMAC webhook, Tally XML-over-HTTP, CredFlow aging tiers, commission two-stage release. These are specific, plausible, and demonstrate platform knowledge far above intern-project level.
-- ✅ **`docs/DEMO_SCRIPT.md` and `docs/CHAT_WALKTHROUGH.md`** — having canned demo scripts is a professional habit most interns never develop. The Virtuous team can run the demo unguided.
+- ✅ **`docs/DEMO_SCRIPT.md` and `docs/CHAT_WALKTHROUGH.md`** — having canned demo scripts is a professional habit most interns never develop. The Engineering team can run the demo unguided.
 - ✅ **`docs/ARCHITECTURE.md` data-flow diagram** — clear separation of concerns, request lifecycle shown end-to-end. Needs the multi-LLM label update (PQ-M9) but the structure is correct.
 - ✅ **BRD-F-102 (deduplication), BRD-F-203 (stage transition), BRD-F-301 (4 screening questions), BRD-F-303 (reminders), BRD-F-502 (Excel MIS columns)** — implemented faithfully and the implementation matches the BRD spec in all material respects.
 - ✅ **`KEYS_AND_SETUP.md`** — the clearest onboarding doc in the project. The "how to get each free key" table is exactly what a new team member needs.
@@ -978,7 +978,7 @@ If only one working day is available before submission, fix in this order:
 # Panel 4 — Human Lens Review
 
 > **Panel 4 experts:** End User / Candidate-Experience Expert (20+ yrs UX, conversational design, HR-tech) · Hiring Manager / Interviewer Expert (20+ yrs recruiting ops, technical panel lead, intern evaluation)
-> **Scope:** Does the chat feel natural to the *candidate*? Does the repo make a strong impression in the *first 5 minutes* of a Virtuous interview? Is the demo script tight enough to run live without dead air?
+> **Scope:** Does the chat feel natural to the *candidate*? Does the repo make a strong impression in the *first 5 minutes* of a TalentOps interview? Is the demo script tight enough to run live without dead air?
 > **Input artefacts read:** `app/chat_agent.py`, `frontend/index.html`, `frontend/app.js`, `docs/DEMO_SCRIPT.md`, `docs/CHAT_WALKTHROUGH.md`, `README.md`, full review of chat UX rendering in the browser.
 
 ---
@@ -1019,7 +1019,7 @@ And change `app.js` line 52 error message from `"start uvicorn on port 8000"` to
 #### HL-B2 · Demo has no "failed candidate" scenario — interviewer question "show me someone who didn't pass" has no answer
 **Raised by:** Hiring Manager Expert, Candidate-Experience Expert
 
-The demo script goes: ingest → score → screen Ananya (who passes) → book slot. The entire happy path. A Virtuous interviewer who asks "what does the system do when a candidate isn't a fit?" or "can you show me a below-threshold candidate?" will get one of two bad outcomes:
+The demo script goes: ingest → score → screen Ananya (who passes) → book slot. The entire happy path. A Technical interviewer who asks "what does the system do when a candidate isn't a fit?" or "can you show me a below-threshold candidate?" will get one of two bad outcomes:
 1. The presenter clicks Vikram in the pipeline table (score below threshold), navigates to screening desk — and discovers there is nothing pre-loaded in the chat for Vikram. The chat box is empty, the chips are Ananya's answers, and the demo stalls.
 2. The presenter improvises: "well, you can see his score is lower" — which is weak compared to "let me show you the system actively rejecting him with an explanation."
 
@@ -1059,7 +1059,7 @@ This captures the same data (notice length + buyout possibility) without the con
 
 ---
 
-#### HL-H2 · Agent introduces itself as "TalentOps screening desk," not as Virtuous — candidate has no trust anchor
+#### HL-H2 · Agent introduces itself as "TalentOps screening desk," not as TalentOps — candidate has no trust anchor
 **Raised by:** Candidate-Experience Expert
 
 `chat_agent.py` scripted fallback, line 105-108:
@@ -1070,14 +1070,14 @@ reply = (
 )
 ```
 
-A real candidate receiving this message cold would not recognise "TalentOps." Their resume went to "Virtuous Advisors." They're now talking to something called "TalentOps screening desk." The brand mismatch creates friction and distrust — candidates are already wary of automated screening.
+A real candidate receiving this message cold would not recognise "TalentOps." Their resume went to "Nexus Enterprise." They're now talking to something called "TalentOps screening desk." The brand mismatch creates friction and distrust — candidates are already wary of automated screening.
 
-The CHAT_SYSTEM prompt also says "You are Virtuous' candidate pre-screening agent (demo)" — so the LLM gets the brand right, the scripted fallback does not.
+The CHAT_SYSTEM prompt also says "You are TalentOps' candidate pre-screening agent (demo)" — so the LLM gets the brand right, the scripted fallback does not.
 
 **Fix:**
 ```python
 reply = (
-    f"Hi {name}, I'm reaching out from Virtuous Advisors' screening team. "
+    f"Hi {name}, I'm reaching out from Nexus Enterprise' screening team. "
     f"Quick check — I'll confirm four points and then we can look at interview slots. {qtext}"
 )
 ```
@@ -1155,7 +1155,7 @@ The demo script is a mechanical walkthrough sequence, not a presentation guide. 
 2. **Tell** (narration of *why* each design decision was made) ❌ absent
 3. **Extend** (what you'd build next, with specificity) ❌ absent
 
-A Virtuous interviewer will almost certainly ask one of:
+A Technical interviewer will almost certainly ask one of:
 - "Why did you pick FastAPI over Django?"
 - "What would you do differently with more time?"
 - "How would this connect to CEIPAL for real?"
@@ -1184,7 +1184,7 @@ And after booking:
 ```
 
 These are backend confirmation messages written for a developer, not a candidate closure message. A candidate completing a real screening deserves a warm close:
-> *"You're all set, [Name]! Your interview is confirmed for [date/time]. We'll send you a calendar invite and a reminder 24 hours before. Looking forward to speaking with you — the team at Virtuous Advisors."*
+> *"You're all set, [Name]! Your interview is confirmed for [date/time]. We'll send you a calendar invite and a reminder 24 hours before. Looking forward to speaking with you — the team at Nexus Enterprise."*
 
 The LLM path will generate something warmer naturally. The scripted fallback will not.
 
@@ -1194,7 +1194,7 @@ reply += (
     f"\n\n✅ You're all set, {cand.get('full_name','').split()[0]}! "
     f"Interview confirmed: {booked['label']}. "
     f"A calendar invite and reminders (T-24h / T-2h / T-15m) will follow. "
-    f"The Virtuous team looks forward to speaking with you."
+    f"The Engineering team looks forward to speaking with you."
 )
 ```
 
@@ -1314,7 +1314,7 @@ Step 6 of the demo script:
 This is the most important beat in the entire demo — it's where the presenter demonstrates judgment (knowing what to build vs. what to document). But the script just says "Explain" and "Close with the scoping call" without giving the actual words. A nervous presenter will either over-explain (rambling for 3 minutes into the MODULE_4_6_NOTES) or under-explain (stumbling through a half-sentence).
 
 **Recommended closing script to add to `DEMO_SCRIPT.md`:**
-> *"The BRD is a 16-week, 6-module build with real enterprise connectors — CEIPAL, WhatsApp, Kredily, Tally. I scoped this prototype to implement the AI core — the parts I can actually run without admin credentials to those systems. Modules 4 and 6 are specced here in MODULE_4_6_NOTES — the polling interval, the webhook signature format, the Tally XML path — so if Virtuous did give me access, I know exactly what to build. The prototype is honest about where the mock boundary sits."*
+> *"The BRD is a 16-week, 6-module build with real enterprise connectors — CEIPAL, WhatsApp, Kredily, Tally. I scoped this prototype to implement the AI core — the parts I can actually run without admin credentials to those systems. Modules 4 and 6 are specced here in MODULE_4_6_NOTES — the polling interval, the webhook signature format, the Tally XML path — so if TalentOps did give me access, I know exactly what to build. The prototype is honest about where the mock boundary sits."*
 
 This is 4 sentences. If read exactly, it covers: what was scoped, why, what was documented, and what the path to production looks like. No dead air.
 
@@ -1452,11 +1452,11 @@ The screening desk dropdown shows ID and name, but not the candidate's score or 
 ## What Panel 4 Agrees Is Done Well
 
 - ✅ **The chip UX is the right idea** — pre-loaded answer shortcuts for a demo are genuinely smart. No other intern project in this stack would have them. The concept is correct; it just needs the content to be generic enough to survive candidate-switching.
-- ✅ **"Simulated web chat (not WhatsApp)" label** — this is the right honest framing. The note appears in the UI (`index.html` line 78) and doesn't pretend the screening desk is WhatsApp. Intellectual honesty like this is exactly what a Virtuous hiring manager wants to see.
+- ✅ **"Simulated web chat (not WhatsApp)" label** — this is the right honest framing. The note appears in the UI (`index.html` line 78) and doesn't pretend the screening desk is WhatsApp. Intellectual honesty like this is exactly what a Senior engineering evaluator wants to see.
 - ✅ **Clicking a pipeline row auto-navigates to the Screening desk** — this is a thoughtful UX flow. The candidate-to-screening link is seamless and would impress a non-technical interviewer watching the demo.
 - ✅ **"Clear chat" button exists** — critical for a live demo where you may need to reset between runs. Most demo prototypes don't think about this.
 - ✅ **Dark mode toggle** — completely unnecessary for the task, but it signals that the builder thought about the UI as a real product, not just a test harness.
-- ✅ **The scoping narrative in `README.md` lines 1-14** — "the AI funnel is real; paid enterprise connectors are mocked and documented" is exactly the right framing and exactly the right level of candour. A senior Virtuous interviewer reading this will immediately think "this person understands scope discipline."
+- ✅ **The scoping narrative in `README.md` lines 1-14** — "the AI funnel is real; paid enterprise connectors are mocked and documented" is exactly the right framing and exactly the right level of candour. A senior Technical interviewer reading this will immediately think "this person understands scope discipline."
 - ✅ **Dossier copy button** — lets a recruiter paste the AI-generated candidate summary directly into an email or CEIPAL note. Shows product thinking: the output of the system has a natural next action, and the UI supports it.
 - ✅ **Hinglish detection hook** — `_detect_hinglish_or_hindi()` in `chat_agent.py` exists (even if not yet wired into anything). The fact that the author thought about Indian recruitment's bilingual reality at all is a genuine differentiator.
 
@@ -1470,7 +1470,7 @@ The two BLOCKERs and three HIGH items below can be fixed in under 30 minutes and
 |---|---|---|---|
 | 1 | HL-B1 | Change port 8000 → 8080 in `DEMO_SCRIPT.md` and `app.js` error message | 2 min |
 | 2 | HL-B2 | Add "failed candidate" beat to `DEMO_SCRIPT.md` Step 3 | 5 min |
-| 3 | HL-H2 | Change "TalentOps screening desk" → "Virtuous Advisors' screening team" in scripted fallback | 1 min |
+| 3 | HL-H2 | Change "TalentOps screening desk" → "Nexus Enterprise' screening team" in scripted fallback | 1 min |
 | 4 | HL-H1 | Rephrase Q_NOTICE to remove "buyout negotiable vs what is printed on paper" | 1 min |
 | 5 | HL-H5 | Rewrite `DEMO_SCRIPT.md` Step 4 with reset instruction and slot caveat | 5 min |
 | 6 | HL-H6 | Expand `DEMO_SCRIPT.md` with narration points + prepared Q&A section | 15 min |
@@ -1581,7 +1581,7 @@ scores = db.fetchall("SELECT * FROM scores")  # entire scores table
 interviews = db.list_interviews()          # full join
 ```
 
-Plus `MOCK_RECRUITERS.read_text()` reads from disk. This runs on every tab switch to the dashboard. At 10 candidates it's ~5ms. At 10,000 candidates (Virtuous's realistic volume after 3 months), this is a multi-second query that returns megabytes of JSON to the frontend, most of which is thrown away after counting rows.
+Plus `MOCK_RECRUITERS.read_text()` reads from disk. This runs on every tab switch to the dashboard. At 10 candidates it's ~5ms. At 10,000 candidates (TalentOps's realistic volume after 3 months), this is a multi-second query that returns megabytes of JSON to the frontend, most of which is thrown away after counting rows.
 
 **Fix:**
 ```sql
@@ -1687,7 +1687,7 @@ Current cost per action:
 | Parse + score 100 resumes | 200 | ~450,000 | ~\$1.40 |
 | Parse + score 1,000 resumes | 2,000 | ~4,500,000 | ~\$14 |
 
-At Virtuous's scale (they likely process 500-2,000 candidates/month per recruiter), **monthly API cost per recruiter is \$7-\$28 on Claude Sonnet**. This is affordable but not documented anywhere. If they switch to `claude-opus-4` the cost is 5x higher.
+At TalentOps's scale (they likely process 500-2,000 candidates/month per recruiter), **monthly API cost per recruiter is \$7-\$28 on Claude Sonnet**. This is affordable but not documented anywhere. If they switch to `claude-opus-4` the cost is 5x higher.
 
 **No caching exists**: re-running `POST /score` rescores every candidate regardless of whether the resume changed since last scoring. Gemini Flash costs ~\$0.0003 per 1K input tokens — much cheaper, making it a strong default for scaling.
 
@@ -1748,7 +1748,7 @@ And separately:
 ```python
 # dashboard.py line 13 → db.list_reminders() → SELECT * FROM reminders ORDER BY id DESC
 ```
-The reminders table grows at 3 rows per booked interview. After 1,000 interviews (realistic for Virtuous in 3 months) this is a 3,000 row full table scan on every dashboard refresh. Dashboard is also called at boot (`await loadDash()` in `app.js`), on every reminder dispatch, and on tab switch.
+The reminders table grows at 3 rows per booked interview. After 1,000 interviews (realistic for TalentOps in 3 months) this is a 3,000 row full table scan on every dashboard refresh. Dashboard is also called at boot (`await loadDash()` in `app.js`), on every reminder dispatch, and on tab switch.
 
 **Fix:** Cache `MOCK_RECRUITERS` at module level. Add a `WHERE created_at > ?` bound to reminder queries with a reasonable window.
 
@@ -1963,7 +1963,7 @@ The `timeline` table now exists and records status transitions with timestamps. 
 
 ---
 
-*This review was produced by a simulated senior engineering panel for the Virtuous AI Intern application. All issues are genuine code observations, not fabricated.*
+*This review was produced by a simulated senior engineering panel for the TalentOps AI production readiness review. All issues are genuine code observations, not fabricated.*
 
 ---
 
@@ -2017,9 +2017,9 @@ openpyxl>=3.1.5
 
 `README.md` Quick Start Step 1 reads:
 ```
-cd C:\Users\lenovo\Desktop\Virtuous automation\talentops-ai
+cd C:\Users\lenovo\Desktop\TalentOps automation\talentops-ai
 ```
-This is Anshul's laptop path. On any other machine this command fails with `No such file or directory`. A cold-clone reviewer (Virtuous hiring team) will see this as the very first instruction and lose trust in the entire document.
+This is Anshul's laptop path. On any other machine this command fails with `No such file or directory`. A cold-clone reviewer (Technical evaluation panel) will see this as the very first instruction and lose trust in the entire document.
 
 **Fix:** Replace with:
 ```bash
@@ -2041,7 +2041,7 @@ BRD-F-202 states explicitly:
 
 `scorer.py` `heuristic_score()` (lines 55-130) uses Python `set.intersection()` on lowercased token lists — the textbook definition of "simplistic keyword searching." The LLM path (`llm_score()`) does use a language model but zero vector similarity is computed anywhere. `requirements.txt` contains no embedding library (no `sentence-transformers`, `faiss-cpu`, `chromadb`, or `pgvector`).
 
-The README and `ARCHITECTURE.md` both describe scoring as "semantic fitment" without acknowledging this gap. A Virtuous technical reviewer will check the BRD, then check the code, and find the delta immediately.
+The README and `ARCHITECTURE.md` both describe scoring as "semantic fitment" without acknowledging this gap. A Senior technical reviewer will check the BRD, then check the code, and find the delta immediately.
 
 **Recommended fix:** Add one honest sentence to README under "What's real vs mocked":
 > *"BRD-F-202 (vector embeddings): Fitment uses LLM-scored JSON + keyword heuristic fallback. True sentence-embedding similarity (e.g. `sentence-transformers`) is an identified future upgrade; see `docs/ARCHITECTURE.md §Scoring`."*
@@ -2145,7 +2145,7 @@ The README "API Endpoints" section lists 18 routes. The actual running app (from
 - `POST /jobs/{id}/archive`
 - `GET /jobs/{id}/candidates`
 
-None of these appear in the README table. A new developer or the Virtuous API reviewer will open Swagger (`/docs`) and see a superset of what the README describes, causing confusion about what is "real."
+None of these appear in the README table. A new developer or the TalentOps API reviewer will open Swagger (`/docs`) and see a superset of what the README describes, causing confusion about what is "real."
 
 **Fix:** Either regenerate the table from the OpenAPI spec (`GET /openapi.json | jq '.paths | keys'`) or add a note: *"See `/docs` (Swagger UI) for the complete, auto-generated API reference."*
 
@@ -2299,7 +2299,7 @@ Even if B-1 (missing `WHERE` filter) is fixed, the underlying approach of using 
 
 `docs/MODULE_4_6_NOTES.md` is one of the strongest documents in the repo: 15-minute Kredily polling interval, TeamLogger webhook signature, Tally XML-over-HTTP WSDL path, CredFlow aging bucket logic, two-stage commission release. These are specific, technically plausible, and demonstrate that the author understands the integration landscape.
 
-However, the README never mentions this file. A Virtuous evaluator reading only the README will miss the most credible technical depth document in the project.
+However, the README never mentions this file. A TalentOps evaluator reading only the README will miss the most credible technical depth document in the project.
 
 **Fix:** Add one line to README under "Documentation":
 ```markdown
@@ -2347,7 +2347,7 @@ cv_select_ratio = 0.42
 interview_to_offer = 0.28
 offer_to_join = 0.71
 ```
-These are industry-average benchmarks hardcoded as floats with no comment explaining their source or the fact that they are static estimates. A Virtuous hiring manager who sees "42% CV selection rate" on the dashboard may believe this reflects real pipeline data.
+These are industry-average benchmarks hardcoded as floats with no comment explaining their source or the fact that they are static estimates. A Senior engineering evaluator who sees "42% CV selection rate" on the dashboard may believe this reflects real pipeline data.
 
 **Fix:** Add comments:
 ```python
@@ -2485,7 +2485,7 @@ PEP 604 union syntax (`X | Y`) requires Python ≥ 3.10. README says "Python 3.9
 ## What Panel 3 Agrees Is Done Well
 
 - ✅ **`MODULE_4_6_NOTES.md` is genuinely impressive** — Kredily 15-minute polling, TeamLogger HMAC webhook, Tally XML-over-HTTP, CredFlow aging tiers, commission two-stage release. These are specific, plausible, and demonstrate platform knowledge far above intern-project level.
-- ✅ **`docs/DEMO_SCRIPT.md` and `docs/CHAT_WALKTHROUGH.md`** — having canned demo scripts is a professional habit most interns never develop. The Virtuous team can run the demo unguided.
+- ✅ **`docs/DEMO_SCRIPT.md` and `docs/CHAT_WALKTHROUGH.md`** — having canned demo scripts is a professional habit most interns never develop. The Engineering team can run the demo unguided.
 - ✅ **`docs/ARCHITECTURE.md` data-flow diagram** — clear separation of concerns, request lifecycle shown end-to-end. Needs the multi-LLM label update (PQ-M9) but the structure is correct.
 - ✅ **BRD-F-102 (deduplication), BRD-F-203 (stage transition), BRD-F-301 (4 screening questions), BRD-F-303 (reminders), BRD-F-502 (Excel MIS columns)** — implemented faithfully and the implementation matches the BRD spec in all material respects.
 - ✅ **`KEYS_AND_SETUP.md`** — the clearest onboarding doc in the project. The "how to get each free key" table is exactly what a new team member needs.
@@ -2526,7 +2526,7 @@ If only one working day is available before submission, fix in this order:
 # Panel 4 — Human Lens Review
 
 > **Panel 4 experts:** End User / Candidate-Experience Expert (20+ yrs UX, conversational design, HR-tech) · Hiring Manager / Interviewer Expert (20+ yrs recruiting ops, technical panel lead, intern evaluation)
-> **Scope:** Does the chat feel natural to the *candidate*? Does the repo make a strong impression in the *first 5 minutes* of a Virtuous interview? Is the demo script tight enough to run live without dead air?
+> **Scope:** Does the chat feel natural to the *candidate*? Does the repo make a strong impression in the *first 5 minutes* of a TalentOps interview? Is the demo script tight enough to run live without dead air?
 > **Input artefacts read:** `app/chat_agent.py`, `frontend/index.html`, `frontend/app.js`, `docs/DEMO_SCRIPT.md`, `docs/CHAT_WALKTHROUGH.md`, `README.md`, full review of chat UX rendering in the browser.
 
 ---
@@ -2567,7 +2567,7 @@ And change `app.js` line 52 error message from `"start uvicorn on port 8000"` to
 #### HL-B2 · Demo has no "failed candidate" scenario — interviewer question "show me someone who didn't pass" has no answer
 **Raised by:** Hiring Manager Expert, Candidate-Experience Expert
 
-The demo script goes: ingest → score → screen Ananya (who passes) → book slot. The entire happy path. A Virtuous interviewer who asks "what does the system do when a candidate isn't a fit?" or "can you show me a below-threshold candidate?" will get one of two bad outcomes:
+The demo script goes: ingest → score → screen Ananya (who passes) → book slot. The entire happy path. A Technical interviewer who asks "what does the system do when a candidate isn't a fit?" or "can you show me a below-threshold candidate?" will get one of two bad outcomes:
 1. The presenter clicks Vikram in the pipeline table (score below threshold), navigates to screening desk — and discovers there is nothing pre-loaded in the chat for Vikram. The chat box is empty, the chips are Ananya's answers, and the demo stalls.
 2. The presenter improvises: "well, you can see his score is lower" — which is weak compared to "let me show you the system actively rejecting him with an explanation."
 
@@ -2607,7 +2607,7 @@ This captures the same data (notice length + buyout possibility) without the con
 
 ---
 
-#### HL-H2 · Agent introduces itself as "TalentOps screening desk," not as Virtuous — candidate has no trust anchor
+#### HL-H2 · Agent introduces itself as "TalentOps screening desk," not as TalentOps — candidate has no trust anchor
 **Raised by:** Candidate-Experience Expert
 
 `chat_agent.py` scripted fallback, line 105-108:
@@ -2618,14 +2618,14 @@ reply = (
 )
 ```
 
-A real candidate receiving this message cold would not recognise "TalentOps." Their resume went to "Virtuous Advisors." They're now talking to something called "TalentOps screening desk." The brand mismatch creates friction and distrust — candidates are already wary of automated screening.
+A real candidate receiving this message cold would not recognise "TalentOps." Their resume went to "Nexus Enterprise." They're now talking to something called "TalentOps screening desk." The brand mismatch creates friction and distrust — candidates are already wary of automated screening.
 
-The CHAT_SYSTEM prompt also says "You are Virtuous' candidate pre-screening agent (demo)" — so the LLM gets the brand right, the scripted fallback does not.
+The CHAT_SYSTEM prompt also says "You are TalentOps' candidate pre-screening agent (demo)" — so the LLM gets the brand right, the scripted fallback does not.
 
 **Fix:**
 ```python
 reply = (
-    f"Hi {name}, I'm reaching out from Virtuous Advisors' screening team. "
+    f"Hi {name}, I'm reaching out from Nexus Enterprise' screening team. "
     f"Quick check — I'll confirm four points and then we can look at interview slots. {qtext}"
 )
 ```
@@ -2703,7 +2703,7 @@ The demo script is a mechanical walkthrough sequence, not a presentation guide. 
 2. **Tell** (narration of *why* each design decision was made) ❌ absent
 3. **Extend** (what you'd build next, with specificity) ❌ absent
 
-A Virtuous interviewer will almost certainly ask one of:
+A Technical interviewer will almost certainly ask one of:
 - "Why did you pick FastAPI over Django?"
 - "What would you do differently with more time?"
 - "How would this connect to CEIPAL for real?"
@@ -2732,7 +2732,7 @@ And after booking:
 ```
 
 These are backend confirmation messages written for a developer, not a candidate closure message. A candidate completing a real screening deserves a warm close:
-> *"You're all set, [Name]! Your interview is confirmed for [date/time]. We'll send you a calendar invite and a reminder 24 hours before. Looking forward to speaking with you — the team at Virtuous Advisors."*
+> *"You're all set, [Name]! Your interview is confirmed for [date/time]. We'll send you a calendar invite and a reminder 24 hours before. Looking forward to speaking with you — the team at Nexus Enterprise."*
 
 The LLM path will generate something warmer naturally. The scripted fallback will not.
 
@@ -2742,7 +2742,7 @@ reply += (
     f"\n\n✅ You're all set, {cand.get('full_name','').split()[0]}! "
     f"Interview confirmed: {booked['label']}. "
     f"A calendar invite and reminders (T-24h / T-2h / T-15m) will follow. "
-    f"The Virtuous team looks forward to speaking with you."
+    f"The Engineering team looks forward to speaking with you."
 )
 ```
 
@@ -2862,7 +2862,7 @@ Step 6 of the demo script:
 This is the most important beat in the entire demo — it's where the presenter demonstrates judgment (knowing what to build vs. what to document). But the script just says "Explain" and "Close with the scoping call" without giving the actual words. A nervous presenter will either over-explain (rambling for 3 minutes into the MODULE_4_6_NOTES) or under-explain (stumbling through a half-sentence).
 
 **Recommended closing script to add to `DEMO_SCRIPT.md`:**
-> *"The BRD is a 16-week, 6-module build with real enterprise connectors — CEIPAL, WhatsApp, Kredily, Tally. I scoped this prototype to implement the AI core — the parts I can actually run without admin credentials to those systems. Modules 4 and 6 are specced here in MODULE_4_6_NOTES — the polling interval, the webhook signature format, the Tally XML path — so if Virtuous did give me access, I know exactly what to build. The prototype is honest about where the mock boundary sits."*
+> *"The BRD is a 16-week, 6-module build with real enterprise connectors — CEIPAL, WhatsApp, Kredily, Tally. I scoped this prototype to implement the AI core — the parts I can actually run without admin credentials to those systems. Modules 4 and 6 are specced here in MODULE_4_6_NOTES — the polling interval, the webhook signature format, the Tally XML path — so if TalentOps did give me access, I know exactly what to build. The prototype is honest about where the mock boundary sits."*
 
 This is 4 sentences. If read exactly, it covers: what was scoped, why, what was documented, and what the path to production looks like. No dead air.
 
@@ -3000,11 +3000,11 @@ The screening desk dropdown shows ID and name, but not the candidate's score or 
 ## What Panel 4 Agrees Is Done Well
 
 - ✅ **The chip UX is the right idea** — pre-loaded answer shortcuts for a demo are genuinely smart. No other intern project in this stack would have them. The concept is correct; it just needs the content to be generic enough to survive candidate-switching.
-- ✅ **"Simulated web chat (not WhatsApp)" label** — this is the right honest framing. The note appears in the UI (`index.html` line 78) and doesn't pretend the screening desk is WhatsApp. Intellectual honesty like this is exactly what a Virtuous hiring manager wants to see.
+- ✅ **"Simulated web chat (not WhatsApp)" label** — this is the right honest framing. The note appears in the UI (`index.html` line 78) and doesn't pretend the screening desk is WhatsApp. Intellectual honesty like this is exactly what a Senior engineering evaluator wants to see.
 - ✅ **Clicking a pipeline row auto-navigates to the Screening desk** — this is a thoughtful UX flow. The candidate-to-screening link is seamless and would impress a non-technical interviewer watching the demo.
 - ✅ **"Clear chat" button exists** — critical for a live demo where you may need to reset between runs. Most demo prototypes don't think about this.
 - ✅ **Dark mode toggle** — completely unnecessary for the task, but it signals that the builder thought about the UI as a real product, not just a test harness.
-- ✅ **The scoping narrative in `README.md` lines 1-14** — "the AI funnel is real; paid enterprise connectors are mocked and documented" is exactly the right framing and exactly the right level of candour. A senior Virtuous interviewer reading this will immediately think "this person understands scope discipline."
+- ✅ **The scoping narrative in `README.md` lines 1-14** — "the AI funnel is real; paid enterprise connectors are mocked and documented" is exactly the right framing and exactly the right level of candour. A senior Technical interviewer reading this will immediately think "this person understands scope discipline."
 - ✅ **Dossier copy button** — lets a recruiter paste the AI-generated candidate summary directly into an email or CEIPAL note. Shows product thinking: the output of the system has a natural next action, and the UI supports it.
 - ✅ **Hinglish detection hook** — `_detect_hinglish_or_hindi()` in `chat_agent.py` exists (even if not yet wired into anything). The fact that the author thought about Indian recruitment's bilingual reality at all is a genuine differentiator.
 
@@ -3018,7 +3018,7 @@ The two BLOCKERs and three HIGH items below can be fixed in under 30 minutes and
 |---|---|---|---|
 | 1 | HL-B1 | Change port 8000 → 8080 in `DEMO_SCRIPT.md` and `app.js` error message | 2 min |
 | 2 | HL-B2 | Add "failed candidate" beat to `DEMO_SCRIPT.md` Step 3 | 5 min |
-| 3 | HL-H2 | Change "TalentOps screening desk" → "Virtuous Advisors' screening team" in scripted fallback | 1 min |
+| 3 | HL-H2 | Change "TalentOps screening desk" → "Nexus Enterprise' screening team" in scripted fallback | 1 min |
 | 4 | HL-H1 | Rephrase Q_NOTICE to remove "buyout negotiable vs what is printed on paper" | 1 min |
 | 5 | HL-H5 | Rewrite `DEMO_SCRIPT.md` Step 4 with reset instruction and slot caveat | 5 min |
 | 6 | HL-H6 | Expand `DEMO_SCRIPT.md` with narration points + prepared Q&A section | 15 min |
@@ -3028,3 +3028,4 @@ The two BLOCKERs and three HIGH items below can be fixed in under 30 minutes and
 ---
 
 *This Panel 4 review section was produced by the simulated End User/Candidate-Experience and Hiring Manager/Interviewer expert personas. All UX observations are based on direct inspection of `chat_agent.py`, `frontend/app.js`, `frontend/index.html`, `docs/DEMO_SCRIPT.md`, and `docs/CHAT_WALKTHROUGH.md`.*
+

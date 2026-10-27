@@ -35,7 +35,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="TalentOps AI",
-    description="Scoped recruitment-automation prototype for Virtuous (AI Intern demo).",
+    description="Autonomous recruitment automation and talent intelligence platform.",
     version="0.1.0",
     lifespan=lifespan,
 )

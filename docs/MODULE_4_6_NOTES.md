@@ -1,6 +1,6 @@
 # Modules 4 & 6 — integration notes (not built)
 
-These modules need paid admin access to Kredily, TeamLogger, CEIPAL, TallyPrime, and CredFlow. The internship demo does not call those APIs. This note is the wiring map I would implement once credentials exist.
+These modules require enterprise admin access to Kredily, TeamLogger, CEIPAL, TallyPrime, and CredFlow. In standalone execution, these connectors are cleanly decoupled and mocked. This architecture specification outlines the exact integration contracts for enterprise deployment.
 
 ## Module 4 — Recruiter productivity (CEIPAL + Kredily + TeamLogger)
 

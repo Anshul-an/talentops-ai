@@ -1,6 +1,6 @@
 # Keys and setup
 
-This demo **runs with zero API keys** (heuristic parse / score / chat). You can optionally plug in an LLM. Anthropic Claude is preferred for the internship story; **Gemini, Groq, and Ollama are free workarounds** so you can still show an LLM without paying Anthropic.
+This system **runs with zero API keys** (heuristic parse / score / chat). You can optionally plug in an LLM. **Gemini, Groq, and Ollama provide zero-cost LLM backends**, and Anthropic Claude is supported for high-precision inference.
 
 CEIPAL, WhatsApp, Naukri, Tally, Kredily, TeamLogger, CredFlow, and Google/M365 calendars have **no free production workaround**. Those stay mocked. See [MODULE_4_6_NOTES.md](MODULE_4_6_NOTES.md).
 
@@ -13,10 +13,10 @@ Never commit `.env`. Copy `.env.example` → `.env` and paste real values only.
 **None.**
 
 ```powershell
-cd "C:\Users\lenovo\Desktop\Virtuous automation\talentops-ai"
+cd talentops-ai
 copy .env.example .env
 .\.venv\Scripts\Activate.ps1
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8080
 ```
 
 Open http://127.0.0.1:8000 — header shows the active engine (`heuristic` if no keys).
@@ -39,7 +39,7 @@ To force a free path even if you later add an Anthropic key, set `LLM_PROVIDER=g
 
 ---
 
-## Optional LLMs (internship demo)
+## Optional LLMs (Cloud and Local)
 
 ### 1. Anthropic Claude (preferred, not free)
 
@@ -103,11 +103,11 @@ No key. Regex/rules for parse, score, and scripted screening questions. Fine for
 
 ## Company-only (no free production workaround)
 
-Do not try to sign up as an intern. This repo **does not call them**.
+Do not configure these for local standalone mode. This repo **does not call external vendor endpoints**.
 
 | System | BRD use | After joining |
 | --- | --- | --- |
-| CEIPAL ATS | Candidate/job/placement REST | Virtuous IT token. [ceipal.com](https://www.ceipal.com/) |
+| CEIPAL ATS | Candidate/job/placement REST | Enterprise IT token. [ceipal.com](https://www.ceipal.com/) |
 | Naukri / Shine | Job-board ingest | Corporate recruiter login. **Do not scrape.** |
 | LinkedIn Recruiter | Sourcing | Company Recruiter seat. |
 | WhatsApp Business | Screening + reminders | [Meta Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api) + verified business number. |

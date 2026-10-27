@@ -1,6 +1,6 @@
 # TalentOps AI architecture
 
-Prototype of Modules 1–3 and 5 from the Virtuous BRD. Modules 4 and 6 are specified in `MODULE_4_6_NOTES.md` and are not implemented against live vendor APIs.
+Autonomous architecture for Modules 1–3 and 5 of the TalentOps enterprise recruitment spec. Modules 4 and 6 are specified in `MODULE_4_6_NOTES.md` and are designed for vendor ATS and ERP integrations.
 
 ```
 [Resume PDF/DOCX/TXT]

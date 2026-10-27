@@ -1,6 +1,6 @@
 # Senior Talent Acquisition Partner – Executive Search
 
-**Client:** Virtuous Advisors & Resources Pvt. Ltd. (demo JD)  
+**Client:** Nexus Strategic Advisors Pvt. Ltd.  
 **Location:** Mumbai / Remote  
 **Experience:** 6–12 years in executive search or high-volume tech hiring  
 **Budget CTC:** ₹18–28 LPA  
