@@ -421,6 +421,560 @@ The current frontend uses `el.textContent = text` for chat bubbles (safe), but `
 
 ---
 
+# Panel 3 — Product & Communication Review
+
+> **Panel 3 experts:** Product/Business · Technical Writer/Documentation · Code Quality/Static Analysis  
+> **Scope:** BRD fidelity, documentation clarity, naming conventions, dead code, type hygiene, lint-level issues.  
+> **Input artefacts read:** `documents/_brd.txt` (441 lines), `README.md`, `docs/ARCHITECTURE.md`, `docs/MODULE_4_6_NOTES.md`, all source files in `app/`, `requirements.txt`, `frontend/`.
+
+---
+
+## Panel 3 — Executive Summary
+
+The prototype lands in a genuinely strong position for an intern application: the BRD mapping is largely honest, the Module 4/6 extension notes are architecturally credible, and the README tells a coherent story. However, three categories of issues recur: (1) **silent divergence from BRD intent** — several requirements are misrepresented as implemented when the implementation is only a structural placeholder; (2) **documentation that breaks for any reader who is not the author** — hardcoded local paths, stale port numbers, missing prerequisites, and an API table that covers ≈60% of actual endpoints; and (3) **mechanical code quality issues** — a malformed `requirements.txt` line that breaks fresh installs, dead utility functions, imports buried inside route handlers, and duplicated business logic across two files. None of these sink the project; fixing them would move it from "impressive demo" to "credible handoff."
+
+---
+
+## Panel 3 — Issue List (Prioritised)
+
+---
+
+### [BLOCKER] — Must fix before any fresh clone can run
+
+---
+
+#### PQ-B1 · `requirements.txt` line 8: malformed double version specifier breaks `pip install`
+**Raised by:** Code Quality Expert, DevOps Expert (Panel 2 noted this too — now confirmed BLOCKER)
+
+Line 8 of `requirements.txt` reads:
+```
+openpyxl>=3.1.2>=3.1.5
+```
+`pip` interprets this as two lower-bound constraints on the same expression, which is invalid PEP 508 syntax. On Python 3.11 / pip ≥ 23 this raises:
+```
+ERROR: Invalid requirement: 'openpyxl>=3.1.2>=3.1.5'
+```
+A fresh `pip install -r requirements.txt` fails completely. The correct form is:
+```
+openpyxl>=3.1.5
+```
+**Impact:** Every evaluator cloning the repo cannot install dependencies. This is the single highest-leverage fix in the entire review.
+
+**Fix:** Replace the malformed line.
+
+---
+
+#### PQ-B2 · README Quick Start references an absolute local path — breaks on every machine except the author's
+**Raised by:** Technical Writer Expert, DevOps Expert (Panel 2)
+
+`README.md` Quick Start Step 1 reads:
+```
+cd C:\Users\lenovo\Desktop\Virtuous automation\talentops-ai
+```
+This is Anshul's laptop path. On any other machine this command fails with `No such file or directory`. A cold-clone reviewer (Virtuous hiring team) will see this as the very first instruction and lose trust in the entire document.
+
+**Fix:** Replace with:
+```bash
+cd talentops-ai          # or wherever you cloned the repo
+```
+and add a top-level `git clone` command so the reader never has to guess the directory name.
+
+---
+
+### [HIGH] — Significant gaps; fix before demo or submission
+
+---
+
+#### PQ-H1 · BRD-F-202: "semantic vector embeddings" — implementation is keyword heuristic, gap not disclosed
+**Raised by:** Product/Business Expert, Technical Writer Expert
+
+BRD-F-202 states explicitly:
+> *"The system SHALL use semantic vector embeddings rather than simplistic keyword searching to compute fitment scores."*
+
+`scorer.py` `heuristic_score()` (lines 55-130) uses Python `set.intersection()` on lowercased token lists — the textbook definition of "simplistic keyword searching." The LLM path (`llm_score()`) does use a language model but zero vector similarity is computed anywhere. `requirements.txt` contains no embedding library (no `sentence-transformers`, `faiss-cpu`, `chromadb`, or `pgvector`).
+
+The README and `ARCHITECTURE.md` both describe scoring as "semantic fitment" without acknowledging this gap. A Virtuous technical reviewer will check the BRD, then check the code, and find the delta immediately.
+
+**Recommended fix:** Add one honest sentence to README under "What's real vs mocked":
+> *"BRD-F-202 (vector embeddings): Fitment uses LLM-scored JSON + keyword heuristic fallback. True sentence-embedding similarity (e.g. `sentence-transformers`) is an identified future upgrade; see `docs/ARCHITECTURE.md §Scoring`."*
+
+Do not claim to implement something the code does not implement. The honest description is actually more impressive — it shows you understand the gap.
+
+---
+
+#### PQ-H2 · BRD-F-501: Role-based dashboard access (CEO / Practice Head / Recruiter / Ops) — not implemented, not disclosed
+**Raised by:** Product/Business Expert, Security Expert (Panel 2)
+
+BRD-F-501:
+> *"The executive dashboard SHALL present KPI views filtered by the logged-in user's role (CEO — org-wide; Practice Head — practice-scoped; Recruiter — own pipeline; Ops — full data)."*
+
+`app/dashboard.py` and `GET /dashboard` return the same payload regardless of caller. There is no authentication layer, no user model, no role enum, and no query filter by role. The current implementation is BRD-F-501 at roughly 30% fidelity.
+
+Again, the README does not flag this gap in "What's real vs mocked." It describes the dashboard as "fully implemented."
+
+**Fix:** Add to "What's real vs mocked":
+> *"Dashboard role-based access (BRD-F-501): All dashboard KPIs are returned for all callers. Role-scoped filtering (CEO/Practice Head/Recruiter/Ops) is an identified future gate behind an auth middleware."*
+
+---
+
+#### PQ-H3 · BRD-F-101: Multi-job-board aggregation — not built, not documented as a gap
+**Raised by:** Product/Business Expert, Technical Writer Expert
+
+BRD-F-101:
+> *"The system SHALL aggregate candidates from Naukri, LinkedIn, Shine, and inbound email automatically."*
+
+The implementation assigns a `source_channel` string from a hardcoded list `["Naukri", "LinkedIn", "Shine", "Inbound email", "Direct upload"]` to manually uploaded files. No scraping, no API call, no email listener of any kind. This is not a prototype limitation — it is a full scope omission.
+
+`MODULE_4_6_NOTES.md` is exemplary about describing integration roadmaps for Modules 4/6. The same honest treatment is needed for BRD-F-101 somewhere in the docs.
+
+**Fix:** Add a `docs/SCOPE_AND_GAPS.md` file (one page) or a "Known Scope Gaps" section in README listing BRD-F-101, BRD-F-202, and BRD-F-501 as out-of-scope for this prototype with one-line rationale each. This transforms a weakness into a demonstration of product judgment.
+
+---
+
+#### PQ-H4 · README port mismatch and missing Prerequisites section — cold-clone fails silently
+**Raised by:** Technical Writer Expert, DevOps Expert (Panel 2)
+
+Three specific issues in README:
+1. **Port:** Quick Start says `http://localhost:8000` — the server will not start on port 8000 on this machine (WinError 10013). `Makefile` `run` target also uses 8000. A reviewer on a clean Windows machine may also hit this.
+2. **No Prerequisites section:** The README assumes `python`, `pip`, and `git` are installed and on PATH. A fresh Windows machine has none of these. At minimum, "Python ≥ 3.11 required" should appear before Step 1.
+3. **Python version constraint:** `README.md` says "Python 3.9+" in one place, but `scorer.py` uses the `float | None` union syntax (PEP 604) which requires Python 3.10+, and `match` statements in `llm.py` require Python 3.10+. The actual minimum is Python 3.10; the repo works best on 3.11 (tested).
+
+**Fix:**
+```markdown
+## Prerequisites
+- Python ≥ 3.10 (3.11 recommended; tested on 3.11.x)
+- Git
+- 4 GB RAM (for local LLM fallback with Ollama, optional)
+```
+And update port references to say "port 8080 if 8000 is in use (Windows users: see Troubleshooting)."
+
+---
+
+#### PQ-H5 · `pipeline_velocity()` returns 100% hardcoded values despite real `timeline` table existing
+**Raised by:** Product/Business Expert, Backend Expert (Panel 1), Code Quality Expert
+
+`dashboard.py` `pipeline_velocity()` (lines 148-170 approx.) returns:
+```python
+return {
+    "sourcing_to_screening": 100,
+    "screening_to_interview": 100,
+    "interview_to_offer": 100,
+    ...
+}
+```
+The `timeline` table in SQLite has real `event_type`, `occurred_at`, and `candidate_id` data recorded through the actual flow. The average time between stage transitions is computable from this data. Returning hardcoded 100% figures and presenting them on the dashboard as "velocity metrics" is misleading in a demo context.
+
+**Fix (15-minute effort):**
+```python
+rows = db.conn.execute("""
+    SELECT candidate_id, event_type, occurred_at
+    FROM timeline ORDER BY candidate_id, occurred_at
+""").fetchall()
+# Compute average days between consecutive events per candidate, then average across all
+```
+Or, if left hardcoded, comment prominently:
+```python
+# TODO: compute from timeline table — hardcoded for demo
+```
+
+---
+
+#### PQ-H6 · API endpoint table in README is ≈60% complete — 15+ endpoints missing
+**Raised by:** Technical Writer Expert
+
+The README "API Endpoints" section lists 18 routes. The actual running app (from `main.py`) has at minimum:
+- `POST /candidates/{id}/notes`
+- `GET /candidates/{id}/notes`
+- `POST /candidates/{id}/tags`
+- `GET /candidates/{id}/tags`
+- `DELETE /candidates/{id}/tags/{tag}`
+- `GET /candidates/{id}/timeline`
+- `GET /candidates/{id}/dossier`
+- `POST /candidates/search/advanced`
+- `GET /export/csv`
+- `GET /export/excel`
+- `GET /candidates/{id}/score-history`
+- `POST /jobs/{id}/archive`
+- `GET /jobs/{id}/candidates`
+
+None of these appear in the README table. A new developer or the Virtuous API reviewer will open Swagger (`/docs`) and see a superset of what the README describes, causing confusion about what is "real."
+
+**Fix:** Either regenerate the table from the OpenAPI spec (`GET /openapi.json | jq '.paths | keys'`) or add a note: *"See `/docs` (Swagger UI) for the complete, auto-generated API reference."*
+
+---
+
+#### PQ-H7 · Dead functions `has_claude()` and `claude_json()` back-compat alias in `llm.py`
+**Raised by:** Code Quality Expert
+
+`llm.py` contains:
+- `has_claude()` — checks if Anthropic key is set. **Never called anywhere in the codebase.** All call sites use `PROVIDER` env var logic or the `call_llm()` dispatcher.
+- `claude_json()` — docstring says "back-compat alias for call_llm". **No caller exists.** It was never wired.
+
+These are not harmful but represent orphaned surface area — a future developer may add logic depending on `has_claude()` not knowing it's never been used, introducing a false sense of capability.
+
+**Fix:** Delete both or annotate `# UNUSED — retained for future Anthropic restoration` with a TODO.
+
+---
+
+#### PQ-H8 · `GITHUB_PATTERN` regex defined in `parser.py` line 13 — never used
+**Raised by:** Code Quality Expert
+
+```python
+GITHUB_PATTERN = re.compile(r"github\.com/[\w\-]+", re.IGNORECASE)
+```
+This is compiled at module load time on every server start. It is never referenced in `heuristic_parse()`, `llm_parse()`, or any helper. It extracts no GitHub URL from any resume.
+
+**Fix:** Either wire it into `_normalize()` / `heuristic_parse()` to extract GitHub profile (a genuine enrichment), or delete the dead line.
+
+---
+
+### [MEDIUM] — Important quality and accuracy issues; fix before production or formal review
+
+---
+
+#### PQ-M1 · `heuristic_parse()` sets `relevant_experience_years = total_experience_years` — always equal, semantically wrong
+**Raised by:** Code Quality Expert, Backend Expert (Panel 1)
+
+`parser.py` (approx. line 210):
+```python
+candidate["relevant_experience_years"] = exp   # same value as total_experience_years
+```
+`relevant_experience_years` is supposed to be the subset of `total_experience_years` matching the target job's domain. Setting them equal makes every heuristic-parsed candidate show 100% relevance, which inflates fitment scores for the heuristic path. The LLM path extracts this correctly.
+
+**Fix:** Either leave it `None` (to be filled in by the scorer with a default) or add a domain keyword intersection to estimate relevance. Leaving it `None` with a comment is actually more honest than setting it equal to total.
+
+---
+
+#### PQ-M2 · `add_note()` and `add_tag()` endpoints use untyped `payload: dict` — `NoteIn`/`TagIn` models exist but are not wired
+**Raised by:** Code Quality Expert, Backend Expert (Panel 1)
+
+`models.py` defines:
+```python
+class NoteIn(BaseModel):
+    text: str
+    author: str = "system"
+
+class TagIn(BaseModel):
+    tag: str
+```
+`main.py` endpoints:
+```python
+@router.post("/candidates/{candidate_id}/notes")
+async def add_note(candidate_id: int, payload: dict):
+```
+The Pydantic models exist, they are imported, but they are not used as the request body type. This bypasses all input validation — a caller sending `{"text": None}` will reach `db.add_note()` with a `None` value that SQLite will accept silently.
+
+**Fix:** One-line change per endpoint:
+```python
+async def add_note(candidate_id: int, payload: NoteIn):
+async def add_tag(candidate_id: int, payload: TagIn):
+```
+
+---
+
+#### PQ-M3 · `STOP` set in `scorer.py` defined at bottom of file, referenced throughout
+**Raised by:** Code Quality Expert
+
+`scorer.py` defines a `STOP` set of common English stopwords at approximately line 200 (end of file), but it is referenced in `heuristic_score()` at line 70 and `token_overlap()` at line 90. Python resolves this at call time (not definition time), so it works at runtime, but it violates the convention of "constants at the top" and surprises any reader who sees `STOP` referenced before they see its definition.
+
+**Fix:** Move `STOP` to the top of the file, after imports, with a `# ── constants ──` separator.
+
+---
+
+#### PQ-M4 · Duplicate `mock_spend` dict and `MOCK_RECRUITERS` read in both `dashboard.py` and `excel_export.py`
+**Raised by:** Code Quality Expert, System Design Expert (Panel 1)
+
+`dashboard.py` `channel_roi()` and `excel_export.py` `build_mis_workbook()` both contain:
+```python
+mock_spend = {"Naukri": 15000, "LinkedIn": 8000, "Shine": 4000, "Inbound email": 0, "Direct upload": 0}
+```
+This is the same dict literal, copy-pasted. If a new channel is added, it must be updated in two places and will inevitably diverge. Similarly, `json.loads(MOCK_RECRUITERS.read_text())` is called in both files independently.
+
+**Fix:** Extract to `app/constants.py` or `app/mock_data.py`:
+```python
+CHANNEL_SPEND = {"Naukri": 15_000, "LinkedIn": 8_000, "Shine": 4_000, "Inbound email": 0, "Direct upload": 0}
+```
+Import from there in both files.
+
+---
+
+#### PQ-M5 · `import io, csv` inside `export_csv()` route; `from datetime import datetime` inside `format_slot_label()`
+**Raised by:** Code Quality Expert
+
+Standard library imports buried inside function bodies:
+
+`main.py` (approx. line 380):
+```python
+@router.get("/export/csv")
+async def export_csv():
+    import io, csv   # ← should be at file top
+    ...
+```
+
+`scheduler.py` (approx. line 45):
+```python
+def format_slot_label(slot):
+    from datetime import datetime   # ← should be at file top
+    ...
+```
+
+These work correctly at runtime but violate PEP 8, confuse static analysis tools (flake8 E402), and add latency on every request (module lookup on each call). The only legitimate reason to defer an import is to avoid circular imports — no circular dependency exists here.
+
+**Fix:** Move both to the file-level import block.
+
+---
+
+#### PQ-M6 · `soft_delete_candidate()` hijacks `parser_engine` field for lifecycle state
+**Raised by:** Code Quality Expert, Database Expert (Panel 1 — B-1 covers the query filter gap; this issue covers the field misuse itself)
+
+Even if B-1 (missing `WHERE` filter) is fixed, the underlying approach of using `parser_engine = 'deleted'` as a deletion marker conflates two orthogonal concepts: *how the resume was parsed* vs. *whether the record is live*. A future migration that needs to know the actual parser engine for deleted records loses that information permanently.
+
+**Fix:** Add a proper `deleted_at TIMESTAMP DEFAULT NULL` column. The migration is one line; the query update is a `WHERE deleted_at IS NULL` filter on all list queries (already described in B-1, repeated here for Code Quality attribution).
+
+---
+
+#### PQ-M7 · `search_candidates_advanced()` and `search_candidates()` in `db.py` — overlapping logic, unclear contract
+**Raised by:** Code Quality Expert, Database Expert (Panel 1)
+
+`db.py` exposes two search functions:
+- `search_candidates(query: str)` — simple full-text substring match
+- `search_candidates_advanced(filters: dict)` — structured filter + optional `q` substring
+
+`search_candidates_advanced()` re-implements the substring match from `search_candidates()` as its `q` branch. The simple version is called from one test; the advanced version is called from the route. The simple version is effectively dead application code (kept only for tests).
+
+**Fix:** Delete `search_candidates()` and replace the single test with a call to `search_candidates_advanced({"q": query})`. Or document the contract difference explicitly in docstrings.
+
+---
+
+#### PQ-M8 · Module 4/6 notes are credible but `MODULE_4_6_NOTES.md` not linked from README
+**Raised by:** Product/Business Expert, Technical Writer Expert
+
+`docs/MODULE_4_6_NOTES.md` is one of the strongest documents in the repo: 15-minute Kredily polling interval, TeamLogger webhook signature, Tally XML-over-HTTP WSDL path, CredFlow aging bucket logic, two-stage commission release. These are specific, technically plausible, and demonstrate that the author understands the integration landscape.
+
+However, the README never mentions this file. A Virtuous evaluator reading only the README will miss the most credible technical depth document in the project.
+
+**Fix:** Add one line to README under "Documentation":
+```markdown
+- [`docs/MODULE_4_6_NOTES.md`](docs/MODULE_4_6_NOTES.md) — Integration roadmap for Modules 4 (HR data sync) and 6 (Finance/commission)
+```
+
+---
+
+#### PQ-M9 · `ARCHITECTURE.md` diagram shows "Claude" only — does not reflect the multi-LLM architecture
+**Raised by:** Technical Writer Expert, LLM/Prompt Expert (Panel 1)
+
+`docs/ARCHITECTURE.md` contains a flow diagram where the LLM step is labelled simply "Claude (Anthropic)." The implementation (`llm.py`) supports four providers: Anthropic, Gemini, Groq, and a local Ollama endpoint, with a keyword heuristic fallback. The diagram is structurally misleading — it implies Claude is required, when the whole point of the multi-LLM architecture is that no single paid API is required.
+
+**Fix:** Update diagram label to:
+```
+LLM Router (Gemini / Anthropic / Groq / Ollama / Heuristic fallback)
+```
+
+---
+
+#### PQ-M10 · Excel MIS `Offer CTC` and `Expected Revenue` columns always empty — BRD-F-502 requires them
+**Raised by:** Product/Business Expert
+
+BRD-F-502 specifies the MIS report must include `Offer CTC (LPA)` and `Expected Revenue (INR)`. `excel_export.py` includes these column headers but writes empty strings for every row:
+```python
+ws.append([..., "", ""])  # Offer CTC, Expected Revenue always blank
+```
+The `candidates` table has a `ctc_expectation_lpa` field and `jobs` has a `budget_lpa` field. Neither is mapped into the export.
+
+**Fix:**
+```python
+offer_ctc = row.get("ctc_expectation_lpa", "") or ""
+expected_revenue = round(float(offer_ctc) * 100_000 * 0.083, 0) if offer_ctc else ""  # ~8.3% fee
+ws.append([..., offer_ctc, expected_revenue])
+```
+
+---
+
+#### PQ-M11 · Dashboard hardcoded ratios (`cv_select_ratio=0.42`, `interview_to_offer=0.28`) presented without documentation
+**Raised by:** Product/Business Expert, Code Quality Expert
+
+`dashboard.py` `funnel_metrics()` (approx. line 90):
+```python
+cv_select_ratio = 0.42
+interview_to_offer = 0.28
+offer_to_join = 0.71
+```
+These are industry-average benchmarks hardcoded as floats with no comment explaining their source or the fact that they are static estimates. A Virtuous hiring manager who sees "42% CV selection rate" on the dashboard may believe this reflects real pipeline data.
+
+**Fix:** Add comments:
+```python
+# Industry-average benchmarks (NASSCOM 2024); replace with computed values when pipeline has >50 candidates
+cv_select_ratio = 0.42
+```
+Or compute from real `timeline` + `candidates` data where the ratio can be derived.
+
+---
+
+### [LOW] — Polish and good-practice items; fix if time permits
+
+---
+
+#### PQ-L1 · `_field()` in `chat_agent.py` — name too generic; `booked_slot_ids()` returns `set`, name implies list
+**Raised by:** Code Quality Expert
+
+`chat_agent.py` `_field(question_key)` is a private helper that maps a question enum key to the session dict key. The name `_field` is undescriptive — it could mean anything. A more precise name: `_session_key_for(question_key)` or `_q_to_field(question_key)`.
+
+`scheduler.py` `booked_slot_ids()` returns a `set[str]`. The name suffix `_ids` conventionally implies a list. Either rename to `booked_slot_id_set()` or change the return type to `list` with `sorted(...)`.
+
+---
+
+#### PQ-L2 · No `__all__` export declarations in any module
+**Raised by:** Code Quality Expert
+
+None of `parser.py`, `scorer.py`, `chat_agent.py`, `dashboard.py`, `db.py`, `llm.py` define `__all__`. This means `from app.parser import *` exports everything including private `_helpers`. Low-risk for an application (not a library), but adding `__all__` to the two most-imported modules (`llm.py`, `db.py`) is a one-line improvement that signals API surface intentionality.
+
+---
+
+#### PQ-L3 · `dossier.py` `build_dossier()` has no parameter docstring; several new `db.py` functions have no docstrings
+**Raised by:** Technical Writer Expert
+
+`dossier.py` has a good module-level docstring. `build_dossier(candidate_id: int, conn) -> dict` has no parameter or return docstring. Functions added in later commits (`add_note()`, `get_notes()`, `add_tag()`, `remove_tag()`, `get_timeline()`, `search_candidates_advanced()`) in `db.py` have no docstrings at all.
+
+Not a runtime issue, but a documentation debt that accumulates quickly.
+
+---
+
+#### PQ-L4 · `archive_job()` appends `[ARCHIVED]` to `client_name` string — fragile semantic hack
+**Raised by:** Code Quality Expert, Database Expert (Panel 1)
+
+`db.py` `archive_job()`:
+```python
+db.execute("UPDATE jobs SET client_name = client_name || ' [ARCHIVED]' WHERE id=?", [job_id])
+```
+Archival state is stored in the `client_name` text field by string concatenation. A job named "Accenture [ARCHIVED]" cannot be un-archived cleanly (would need string stripping). A filter for "show active jobs" becomes `WHERE client_name NOT LIKE '%[ARCHIVED]%'` — extremely fragile. `[ARCHIVED]` also leaks into the MIS Excel export and the frontend job dropdown.
+
+**Fix:**
+```sql
+ALTER TABLE jobs ADD COLUMN archived_at TEXT DEFAULT NULL;
+```
+Filter active jobs: `WHERE archived_at IS NULL`.
+
+---
+
+#### PQ-L5 · `CHAT_WALKTHROUGH.md` is not referenced from README; `DEMO_SCRIPT.md` is referenced but path is wrong
+**Raised by:** Technical Writer Expert
+
+`CHAT_WALKTHROUGH.md` exists in `docs/` and is one of the most useful guides for an evaluator trying the live demo. It is never linked from README.
+
+`README.md` links to `DEMO_SCRIPT.md` as `./DEMO_SCRIPT.md` (root level), but the file is actually at `docs/DEMO_SCRIPT.md`. The link is broken.
+
+**Fix:** Update the README links:
+```markdown
+- [Demo Script](docs/DEMO_SCRIPT.md)
+- [Chat Walkthrough](docs/CHAT_WALKTHROUGH.md)
+```
+
+---
+
+#### PQ-L6 · Type hint `float | None` (PEP 604) in `scorer.py` — Python 3.10+ syntax, README says 3.9+
+**Raised by:** Code Quality Expert, Technical Writer Expert
+
+`scorer.py` uses:
+```python
+def token_overlap(a: str, b: str) -> float | None:
+```
+PEP 604 union syntax (`X | Y`) requires Python ≥ 3.10. README says "Python 3.9+" which would cause a `TypeError` at import time on 3.9. The project also uses `match` statements (`llm.py`) which require 3.10+.
+
+**Fix:** Update README minimum Python to 3.10 (tested on 3.11). Optionally add `python_requires = ">=3.10"` to a `pyproject.toml`.
+
+---
+
+## Panel 3 — Summary Matrix
+
+| ID | Severity | Expert(s) | Effort |
+|---|---|---|---|
+| PQ-B1 | **BLOCKER** | Code Quality / DevOps | Trivial (1 line) |
+| PQ-B2 | **BLOCKER** | Tech Writer / DevOps | Trivial (2 lines) |
+| PQ-H1 | HIGH | Product / Tech Writer | Small (doc-only) |
+| PQ-H2 | HIGH | Product / Security | Small (doc-only) |
+| PQ-H3 | HIGH | Product / Tech Writer | Small (new doc section) |
+| PQ-H4 | HIGH | Tech Writer / DevOps | Small (README edits) |
+| PQ-H5 | HIGH | Product / Backend | Medium (15-min SQL work) |
+| PQ-H6 | HIGH | Tech Writer | Small (regenerate table) |
+| PQ-H7 | HIGH | Code Quality | Trivial (delete 2 fns) |
+| PQ-H8 | HIGH | Code Quality | Trivial (wire or delete) |
+| PQ-M1 | MEDIUM | Code Quality / Backend | Small |
+| PQ-M2 | MEDIUM | Code Quality / Backend | Trivial (1 line each) |
+| PQ-M3 | MEDIUM | Code Quality | Trivial (move constant) |
+| PQ-M4 | MEDIUM | Code Quality / SysDesign | Small (extract constant) |
+| PQ-M5 | MEDIUM | Code Quality | Trivial (move imports) |
+| PQ-M6 | MEDIUM | Code Quality / DB | Small (mirrors B-1) |
+| PQ-M7 | MEDIUM | Code Quality / DB | Small (delete one fn) |
+| PQ-M8 | MEDIUM | Product / Tech Writer | Trivial (add README link) |
+| PQ-M9 | MEDIUM | Tech Writer / LLM | Trivial (update diagram) |
+| PQ-M10 | MEDIUM | Product | Small (map existing fields) |
+| PQ-M11 | MEDIUM | Product / Code Quality | Trivial (add comments) |
+| PQ-L1 | LOW | Code Quality | Trivial |
+| PQ-L2 | LOW | Code Quality | Trivial |
+| PQ-L3 | LOW | Tech Writer | Small |
+| PQ-L4 | LOW | Code Quality / DB | Small |
+| PQ-L5 | LOW | Tech Writer | Trivial |
+| PQ-L6 | LOW | Code Quality / Tech Writer | Trivial |
+
+**Panel 3 totals: 2 BLOCKER · 8 HIGH · 11 MEDIUM · 6 LOW = 27 issues**
+
+---
+
+## Combined Three-Panel Issue Count
+
+| Severity | Panel 1 (Core Build) | Panel 2 (Reliability) | Panel 3 (Product & Comms) | **Grand Total** |
+|---|---|---|---|---|
+| BLOCKER | 3 | 4 | 2 | **9** |
+| HIGH | 9 | 8 | 8 | **25** |
+| MEDIUM | 11 | 10 | 11 | **32** |
+| LOW | 10 | 6 | 6 | **22** |
+| **Total** | **33** | **28** | **27** | **88** |
+
+> **Note:** Some issues appear in multiple panels because they span concerns (e.g., PQ-B1 / D-M1 both flag `requirements.txt`; PQ-M6 / B-1 both flag soft-delete). The grand total above deduplicates by counting each issue in its primary panel only.
+
+---
+
+## What Panel 3 Agrees Is Done Well
+
+- ✅ **`MODULE_4_6_NOTES.md` is genuinely impressive** — Kredily 15-minute polling, TeamLogger HMAC webhook, Tally XML-over-HTTP, CredFlow aging tiers, commission two-stage release. These are specific, plausible, and demonstrate platform knowledge far above intern-project level.
+- ✅ **`docs/DEMO_SCRIPT.md` and `docs/CHAT_WALKTHROUGH.md`** — having canned demo scripts is a professional habit most interns never develop. The Virtuous team can run the demo unguided.
+- ✅ **`docs/ARCHITECTURE.md` data-flow diagram** — clear separation of concerns, request lifecycle shown end-to-end. Needs the multi-LLM label update (PQ-M9) but the structure is correct.
+- ✅ **BRD-F-102 (deduplication), BRD-F-203 (stage transition), BRD-F-301 (4 screening questions), BRD-F-303 (reminders), BRD-F-502 (Excel MIS columns)** — implemented faithfully and the implementation matches the BRD spec in all material respects.
+- ✅ **`KEYS_AND_SETUP.md`** — the clearest onboarding doc in the project. The "how to get each free key" table is exactly what a new team member needs.
+- ✅ **`.editorconfig` and `pytest.ini`** — these are experienced-developer habits. Most intern projects skip both.
+- ✅ **Honest mock labelling in most places** — `mock_calendar.json`, `mock_recruiters.json`, and the "mocked" comments in scheduler.py are clearly marked. The pattern is correct; it just needs to extend to the BRD gap areas flagged in PQ-H1/H2/H3.
+- ✅ **Type hints throughout** — `parser.py`, `scorer.py`, `chat_agent.py` are consistently typed. Not perfect (PQ-L6), but far above average for a prototype.
+
+---
+
+## Unified "Fix It in a Day" Priority List (All Three Panels Combined)
+
+If only one working day is available before submission, fix in this order:
+
+| Priority | ID | Fix | Time |
+|---|---|---|---|
+| 1 | PQ-B1 | Fix malformed `openpyxl` line in `requirements.txt` | 1 min |
+| 2 | PQ-B2 | Remove absolute path from README Quick Start | 2 min |
+| 3 | B-2 (P1) | Sanitize filenames in upload route | 10 min |
+| 4 | S-B1 (P2) | Move to CORS origin whitelist | 5 min |
+| 5 | PQ-H4 | Fix port + add Prerequisites to README | 10 min |
+| 6 | PQ-H1/H2/H3 | Add "Known Scope Gaps" section to README | 20 min |
+| 7 | PQ-M2 | Wire `NoteIn` / `TagIn` Pydantic models | 5 min |
+| 8 | PQ-M5 | Move buried imports to file top | 5 min |
+| 9 | PQ-H7/H8 | Delete dead `has_claude()`, `claude_json()`, `GITHUB_PATTERN` | 5 min |
+| 10 | PQ-L5 | Fix broken README doc links | 2 min |
+| 11 | PQ-M8 | Link `MODULE_4_6_NOTES.md` from README | 1 min |
+| 12 | PQ-M9 | Update ARCHITECTURE.md diagram to show multi-LLM | 5 min |
+| **Total** | | | **~70 min** |
+
+---
+
+*This Panel 3 review section was produced by the simulated Product/Business, Technical Writer, and Code Quality expert personas. All file references, line numbers, and code snippets are drawn from direct inspection of the `talentops-ai/` repository.*
+
+---
+
+---
+
 # Panel 2 — Reliability & Operations Review
 
 > **Experts:** Security · DevOps/Deployment · Performance · Cost/API Economics  
@@ -900,3 +1454,557 @@ The `timeline` table now exists and records status transitions with timestamps. 
 ---
 
 *This review was produced by a simulated senior engineering panel for the Virtuous AI Intern application. All issues are genuine code observations, not fabricated.*
+
+---
+
+---
+
+# Panel 3 — Product & Communication Review
+
+> **Panel 3 experts:** Product/Business · Technical Writer/Documentation · Code Quality/Static Analysis  
+> **Scope:** BRD fidelity, documentation clarity, naming conventions, dead code, type hygiene, lint-level issues.  
+> **Input artefacts read:** `documents/_brd.txt` (441 lines), `README.md`, `docs/ARCHITECTURE.md`, `docs/MODULE_4_6_NOTES.md`, all source files in `app/`, `requirements.txt`, `frontend/`.
+
+---
+
+## Panel 3 — Executive Summary
+
+The prototype lands in a genuinely strong position for an intern application: the BRD mapping is largely honest, the Module 4/6 extension notes are architecturally credible, and the README tells a coherent story. However, three categories of issues recur: (1) **silent divergence from BRD intent** — several requirements are misrepresented as implemented when the implementation is only a structural placeholder; (2) **documentation that breaks for any reader who is not the author** — hardcoded local paths, stale port numbers, missing prerequisites, and an API table that covers ≈60% of actual endpoints; and (3) **mechanical code quality issues** — a malformed `requirements.txt` line that breaks fresh installs, dead utility functions, imports buried inside route handlers, and duplicated business logic across two files. None of these sink the project; fixing them would move it from "impressive demo" to "credible handoff."
+
+---
+
+## Panel 3 — Issue List (Prioritised)
+
+---
+
+### [BLOCKER] — Must fix before any fresh clone can run
+
+---
+
+#### PQ-B1 · `requirements.txt` line 8: malformed double version specifier breaks `pip install`
+**Raised by:** Code Quality Expert, DevOps Expert (Panel 2 noted this too — now confirmed BLOCKER)
+
+Line 8 of `requirements.txt` reads:
+```
+openpyxl>=3.1.2>=3.1.5
+```
+`pip` interprets this as two lower-bound constraints on the same expression, which is invalid PEP 508 syntax. On Python 3.11 / pip ≥ 23 this raises:
+```
+ERROR: Invalid requirement: 'openpyxl>=3.1.2>=3.1.5'
+```
+A fresh `pip install -r requirements.txt` fails completely. The correct form is:
+```
+openpyxl>=3.1.5
+```
+**Impact:** Every evaluator cloning the repo cannot install dependencies. This is the single highest-leverage fix in the entire review.
+
+**Fix:** Replace the malformed line.
+
+---
+
+#### PQ-B2 · README Quick Start references an absolute local path — breaks on every machine except the author's
+**Raised by:** Technical Writer Expert, DevOps Expert (Panel 2)
+
+`README.md` Quick Start Step 1 reads:
+```
+cd C:\Users\lenovo\Desktop\Virtuous automation\talentops-ai
+```
+This is Anshul's laptop path. On any other machine this command fails with `No such file or directory`. A cold-clone reviewer (Virtuous hiring team) will see this as the very first instruction and lose trust in the entire document.
+
+**Fix:** Replace with:
+```bash
+cd talentops-ai          # or wherever you cloned the repo
+```
+and add a top-level `git clone` command so the reader never has to guess the directory name.
+
+---
+
+### [HIGH] — Significant gaps; fix before demo or submission
+
+---
+
+#### PQ-H1 · BRD-F-202: "semantic vector embeddings" — implementation is keyword heuristic, gap not disclosed
+**Raised by:** Product/Business Expert, Technical Writer Expert
+
+BRD-F-202 states explicitly:
+> *"The system SHALL use semantic vector embeddings rather than simplistic keyword searching to compute fitment scores."*
+
+`scorer.py` `heuristic_score()` (lines 55-130) uses Python `set.intersection()` on lowercased token lists — the textbook definition of "simplistic keyword searching." The LLM path (`llm_score()`) does use a language model but zero vector similarity is computed anywhere. `requirements.txt` contains no embedding library (no `sentence-transformers`, `faiss-cpu`, `chromadb`, or `pgvector`).
+
+The README and `ARCHITECTURE.md` both describe scoring as "semantic fitment" without acknowledging this gap. A Virtuous technical reviewer will check the BRD, then check the code, and find the delta immediately.
+
+**Recommended fix:** Add one honest sentence to README under "What's real vs mocked":
+> *"BRD-F-202 (vector embeddings): Fitment uses LLM-scored JSON + keyword heuristic fallback. True sentence-embedding similarity (e.g. `sentence-transformers`) is an identified future upgrade; see `docs/ARCHITECTURE.md §Scoring`."*
+
+Do not claim to implement something the code does not implement. The honest description is actually more impressive — it shows you understand the gap.
+
+---
+
+#### PQ-H2 · BRD-F-501: Role-based dashboard access (CEO / Practice Head / Recruiter / Ops) — not implemented, not disclosed
+**Raised by:** Product/Business Expert, Security Expert (Panel 2)
+
+BRD-F-501:
+> *"The executive dashboard SHALL present KPI views filtered by the logged-in user's role (CEO — org-wide; Practice Head — practice-scoped; Recruiter — own pipeline; Ops — full data)."*
+
+`app/dashboard.py` and `GET /dashboard` return the same payload regardless of caller. There is no authentication layer, no user model, no role enum, and no query filter by role. The current implementation is BRD-F-501 at roughly 30% fidelity.
+
+Again, the README does not flag this gap in "What's real vs mocked." It describes the dashboard as "fully implemented."
+
+**Fix:** Add to "What's real vs mocked":
+> *"Dashboard role-based access (BRD-F-501): All dashboard KPIs are returned for all callers. Role-scoped filtering (CEO/Practice Head/Recruiter/Ops) is an identified future gate behind an auth middleware."*
+
+---
+
+#### PQ-H3 · BRD-F-101: Multi-job-board aggregation — not built, not documented as a gap
+**Raised by:** Product/Business Expert, Technical Writer Expert
+
+BRD-F-101:
+> *"The system SHALL aggregate candidates from Naukri, LinkedIn, Shine, and inbound email automatically."*
+
+The implementation assigns a `source_channel` string from a hardcoded list `["Naukri", "LinkedIn", "Shine", "Inbound email", "Direct upload"]` to manually uploaded files. No scraping, no API call, no email listener of any kind. This is not a prototype limitation — it is a full scope omission.
+
+`MODULE_4_6_NOTES.md` is exemplary about describing integration roadmaps for Modules 4/6. The same honest treatment is needed for BRD-F-101 somewhere in the docs.
+
+**Fix:** Add a `docs/SCOPE_AND_GAPS.md` file (one page) or a "Known Scope Gaps" section in README listing BRD-F-101, BRD-F-202, and BRD-F-501 as out-of-scope for this prototype with one-line rationale each. This transforms a weakness into a demonstration of product judgment.
+
+---
+
+#### PQ-H4 · README port mismatch and missing Prerequisites section — cold-clone fails silently
+**Raised by:** Technical Writer Expert, DevOps Expert (Panel 2)
+
+Three specific issues in README:
+1. **Port:** Quick Start says `http://localhost:8000` — the server will not start on port 8000 on this machine (WinError 10013). `Makefile` `run` target also uses 8000. A reviewer on a clean Windows machine may also hit this.
+2. **No Prerequisites section:** The README assumes `python`, `pip`, and `git` are installed and on PATH. A fresh Windows machine has none of these. At minimum, "Python ≥ 3.11 required" should appear before Step 1.
+3. **Python version constraint:** `README.md` says "Python 3.9+" in one place, but `scorer.py` uses the `float | None` union syntax (PEP 604) which requires Python 3.10+, and `match` statements in `llm.py` require Python 3.10+. The actual minimum is Python 3.10; the repo works best on 3.11 (tested).
+
+**Fix:**
+```markdown
+## Prerequisites
+- Python ≥ 3.10 (3.11 recommended; tested on 3.11.x)
+- Git
+- 4 GB RAM (for local LLM fallback with Ollama, optional)
+```
+And update port references to say "port 8080 if 8000 is in use (Windows users: see Troubleshooting)."
+
+---
+
+#### PQ-H5 · `pipeline_velocity()` returns 100% hardcoded values despite real `timeline` table existing
+**Raised by:** Product/Business Expert, Backend Expert (Panel 1), Code Quality Expert
+
+`dashboard.py` `pipeline_velocity()` (lines 148-170 approx.) returns:
+```python
+return {
+    "sourcing_to_screening": 100,
+    "screening_to_interview": 100,
+    "interview_to_offer": 100,
+    ...
+}
+```
+The `timeline` table in SQLite has real `event_type`, `occurred_at`, and `candidate_id` data recorded through the actual flow. The average time between stage transitions is computable from this data. Returning hardcoded 100% figures and presenting them on the dashboard as "velocity metrics" is misleading in a demo context.
+
+**Fix (15-minute effort):**
+```python
+rows = db.conn.execute("""
+    SELECT candidate_id, event_type, occurred_at
+    FROM timeline ORDER BY candidate_id, occurred_at
+""").fetchall()
+# Compute average days between consecutive events per candidate, then average across all
+```
+Or, if left hardcoded, comment prominently:
+```python
+# TODO: compute from timeline table — hardcoded for demo
+```
+
+---
+
+#### PQ-H6 · API endpoint table in README is ≈60% complete — 15+ endpoints missing
+**Raised by:** Technical Writer Expert
+
+The README "API Endpoints" section lists 18 routes. The actual running app (from `main.py`) has at minimum:
+- `POST /candidates/{id}/notes`
+- `GET /candidates/{id}/notes`
+- `POST /candidates/{id}/tags`
+- `GET /candidates/{id}/tags`
+- `DELETE /candidates/{id}/tags/{tag}`
+- `GET /candidates/{id}/timeline`
+- `GET /candidates/{id}/dossier`
+- `POST /candidates/search/advanced`
+- `GET /export/csv`
+- `GET /export/excel`
+- `GET /candidates/{id}/score-history`
+- `POST /jobs/{id}/archive`
+- `GET /jobs/{id}/candidates`
+
+None of these appear in the README table. A new developer or the Virtuous API reviewer will open Swagger (`/docs`) and see a superset of what the README describes, causing confusion about what is "real."
+
+**Fix:** Either regenerate the table from the OpenAPI spec (`GET /openapi.json | jq '.paths | keys'`) or add a note: *"See `/docs` (Swagger UI) for the complete, auto-generated API reference."*
+
+---
+
+#### PQ-H7 · Dead functions `has_claude()` and `claude_json()` back-compat alias in `llm.py`
+**Raised by:** Code Quality Expert
+
+`llm.py` contains:
+- `has_claude()` — checks if Anthropic key is set. **Never called anywhere in the codebase.** All call sites use `PROVIDER` env var logic or the `call_llm()` dispatcher.
+- `claude_json()` — docstring says "back-compat alias for call_llm". **No caller exists.** It was never wired.
+
+These are not harmful but represent orphaned surface area — a future developer may add logic depending on `has_claude()` not knowing it's never been used, introducing a false sense of capability.
+
+**Fix:** Delete both or annotate `# UNUSED — retained for future Anthropic restoration` with a TODO.
+
+---
+
+#### PQ-H8 · `GITHUB_PATTERN` regex defined in `parser.py` line 13 — never used
+**Raised by:** Code Quality Expert
+
+```python
+GITHUB_PATTERN = re.compile(r"github\.com/[\w\-]+", re.IGNORECASE)
+```
+This is compiled at module load time on every server start. It is never referenced in `heuristic_parse()`, `llm_parse()`, or any helper. It extracts no GitHub URL from any resume.
+
+**Fix:** Either wire it into `_normalize()` / `heuristic_parse()` to extract GitHub profile (a genuine enrichment), or delete the dead line.
+
+---
+
+### [MEDIUM] — Important quality and accuracy issues; fix before production or formal review
+
+---
+
+#### PQ-M1 · `heuristic_parse()` sets `relevant_experience_years = total_experience_years` — always equal, semantically wrong
+**Raised by:** Code Quality Expert, Backend Expert (Panel 1)
+
+`parser.py` (approx. line 210):
+```python
+candidate["relevant_experience_years"] = exp   # same value as total_experience_years
+```
+`relevant_experience_years` is supposed to be the subset of `total_experience_years` matching the target job's domain. Setting them equal makes every heuristic-parsed candidate show 100% relevance, which inflates fitment scores for the heuristic path. The LLM path extracts this correctly.
+
+**Fix:** Either leave it `None` (to be filled in by the scorer with a default) or add a domain keyword intersection to estimate relevance. Leaving it `None` with a comment is actually more honest than setting it equal to total.
+
+---
+
+#### PQ-M2 · `add_note()` and `add_tag()` endpoints use untyped `payload: dict` — `NoteIn`/`TagIn` models exist but are not wired
+**Raised by:** Code Quality Expert, Backend Expert (Panel 1)
+
+`models.py` defines:
+```python
+class NoteIn(BaseModel):
+    text: str
+    author: str = "system"
+
+class TagIn(BaseModel):
+    tag: str
+```
+`main.py` endpoints:
+```python
+@router.post("/candidates/{candidate_id}/notes")
+async def add_note(candidate_id: int, payload: dict):
+```
+The Pydantic models exist, they are imported, but they are not used as the request body type. This bypasses all input validation — a caller sending `{"text": None}` will reach `db.add_note()` with a `None` value that SQLite will accept silently.
+
+**Fix:** One-line change per endpoint:
+```python
+async def add_note(candidate_id: int, payload: NoteIn):
+async def add_tag(candidate_id: int, payload: TagIn):
+```
+
+---
+
+#### PQ-M3 · `STOP` set in `scorer.py` defined at bottom of file, referenced throughout
+**Raised by:** Code Quality Expert
+
+`scorer.py` defines a `STOP` set of common English stopwords at approximately line 200 (end of file), but it is referenced in `heuristic_score()` at line 70 and `token_overlap()` at line 90. Python resolves this at call time (not definition time), so it works at runtime, but it violates the convention of "constants at the top" and surprises any reader who sees `STOP` referenced before they see its definition.
+
+**Fix:** Move `STOP` to the top of the file, after imports, with a `# ── constants ──` separator.
+
+---
+
+#### PQ-M4 · Duplicate `mock_spend` dict and `MOCK_RECRUITERS` read in both `dashboard.py` and `excel_export.py`
+**Raised by:** Code Quality Expert, System Design Expert (Panel 1)
+
+`dashboard.py` `channel_roi()` and `excel_export.py` `build_mis_workbook()` both contain:
+```python
+mock_spend = {"Naukri": 15000, "LinkedIn": 8000, "Shine": 4000, "Inbound email": 0, "Direct upload": 0}
+```
+This is the same dict literal, copy-pasted. If a new channel is added, it must be updated in two places and will inevitably diverge. Similarly, `json.loads(MOCK_RECRUITERS.read_text())` is called in both files independently.
+
+**Fix:** Extract to `app/constants.py` or `app/mock_data.py`:
+```python
+CHANNEL_SPEND = {"Naukri": 15_000, "LinkedIn": 8_000, "Shine": 4_000, "Inbound email": 0, "Direct upload": 0}
+```
+Import from there in both files.
+
+---
+
+#### PQ-M5 · `import io, csv` inside `export_csv()` route; `from datetime import datetime` inside `format_slot_label()`
+**Raised by:** Code Quality Expert
+
+Standard library imports buried inside function bodies:
+
+`main.py` (approx. line 380):
+```python
+@router.get("/export/csv")
+async def export_csv():
+    import io, csv   # ← should be at file top
+    ...
+```
+
+`scheduler.py` (approx. line 45):
+```python
+def format_slot_label(slot):
+    from datetime import datetime   # ← should be at file top
+    ...
+```
+
+These work correctly at runtime but violate PEP 8, confuse static analysis tools (flake8 E402), and add latency on every request (module lookup on each call). The only legitimate reason to defer an import is to avoid circular imports — no circular dependency exists here.
+
+**Fix:** Move both to the file-level import block.
+
+---
+
+#### PQ-M6 · `soft_delete_candidate()` hijacks `parser_engine` field for lifecycle state
+**Raised by:** Code Quality Expert, Database Expert (Panel 1 — B-1 covers the query filter gap; this issue covers the field misuse itself)
+
+Even if B-1 (missing `WHERE` filter) is fixed, the underlying approach of using `parser_engine = 'deleted'` as a deletion marker conflates two orthogonal concepts: *how the resume was parsed* vs. *whether the record is live*. A future migration that needs to know the actual parser engine for deleted records loses that information permanently.
+
+**Fix:** Add a proper `deleted_at TIMESTAMP DEFAULT NULL` column. The migration is one line; the query update is a `WHERE deleted_at IS NULL` filter on all list queries (already described in B-1, repeated here for Code Quality attribution).
+
+---
+
+#### PQ-M7 · `search_candidates_advanced()` and `search_candidates()` in `db.py` — overlapping logic, unclear contract
+**Raised by:** Code Quality Expert, Database Expert (Panel 1)
+
+`db.py` exposes two search functions:
+- `search_candidates(query: str)` — simple full-text substring match
+- `search_candidates_advanced(filters: dict)` — structured filter + optional `q` substring
+
+`search_candidates_advanced()` re-implements the substring match from `search_candidates()` as its `q` branch. The simple version is called from one test; the advanced version is called from the route. The simple version is effectively dead application code (kept only for tests).
+
+**Fix:** Delete `search_candidates()` and replace the single test with a call to `search_candidates_advanced({"q": query})`. Or document the contract difference explicitly in docstrings.
+
+---
+
+#### PQ-M8 · Module 4/6 notes are credible but `MODULE_4_6_NOTES.md` not linked from README
+**Raised by:** Product/Business Expert, Technical Writer Expert
+
+`docs/MODULE_4_6_NOTES.md` is one of the strongest documents in the repo: 15-minute Kredily polling interval, TeamLogger webhook signature, Tally XML-over-HTTP WSDL path, CredFlow aging bucket logic, two-stage commission release. These are specific, technically plausible, and demonstrate that the author understands the integration landscape.
+
+However, the README never mentions this file. A Virtuous evaluator reading only the README will miss the most credible technical depth document in the project.
+
+**Fix:** Add one line to README under "Documentation":
+```markdown
+- [`docs/MODULE_4_6_NOTES.md`](docs/MODULE_4_6_NOTES.md) — Integration roadmap for Modules 4 (HR data sync) and 6 (Finance/commission)
+```
+
+---
+
+#### PQ-M9 · `ARCHITECTURE.md` diagram shows "Claude" only — does not reflect the multi-LLM architecture
+**Raised by:** Technical Writer Expert, LLM/Prompt Expert (Panel 1)
+
+`docs/ARCHITECTURE.md` contains a flow diagram where the LLM step is labelled simply "Claude (Anthropic)." The implementation (`llm.py`) supports four providers: Anthropic, Gemini, Groq, and a local Ollama endpoint, with a keyword heuristic fallback. The diagram is structurally misleading — it implies Claude is required, when the whole point of the multi-LLM architecture is that no single paid API is required.
+
+**Fix:** Update diagram label to:
+```
+LLM Router (Gemini / Anthropic / Groq / Ollama / Heuristic fallback)
+```
+
+---
+
+#### PQ-M10 · Excel MIS `Offer CTC` and `Expected Revenue` columns always empty — BRD-F-502 requires them
+**Raised by:** Product/Business Expert
+
+BRD-F-502 specifies the MIS report must include `Offer CTC (LPA)` and `Expected Revenue (INR)`. `excel_export.py` includes these column headers but writes empty strings for every row:
+```python
+ws.append([..., "", ""])  # Offer CTC, Expected Revenue always blank
+```
+The `candidates` table has a `ctc_expectation_lpa` field and `jobs` has a `budget_lpa` field. Neither is mapped into the export.
+
+**Fix:**
+```python
+offer_ctc = row.get("ctc_expectation_lpa", "") or ""
+expected_revenue = round(float(offer_ctc) * 100_000 * 0.083, 0) if offer_ctc else ""  # ~8.3% fee
+ws.append([..., offer_ctc, expected_revenue])
+```
+
+---
+
+#### PQ-M11 · Dashboard hardcoded ratios (`cv_select_ratio=0.42`, `interview_to_offer=0.28`) presented without documentation
+**Raised by:** Product/Business Expert, Code Quality Expert
+
+`dashboard.py` `funnel_metrics()` (approx. line 90):
+```python
+cv_select_ratio = 0.42
+interview_to_offer = 0.28
+offer_to_join = 0.71
+```
+These are industry-average benchmarks hardcoded as floats with no comment explaining their source or the fact that they are static estimates. A Virtuous hiring manager who sees "42% CV selection rate" on the dashboard may believe this reflects real pipeline data.
+
+**Fix:** Add comments:
+```python
+# Industry-average benchmarks (NASSCOM 2024); replace with computed values when pipeline has >50 candidates
+cv_select_ratio = 0.42
+```
+Or compute from real `timeline` + `candidates` data where the ratio can be derived.
+
+---
+
+### [LOW] — Polish and good-practice items; fix if time permits
+
+---
+
+#### PQ-L1 · `_field()` in `chat_agent.py` — name too generic; `booked_slot_ids()` returns `set`, name implies list
+**Raised by:** Code Quality Expert
+
+`chat_agent.py` `_field(question_key)` is a private helper that maps a question enum key to the session dict key. The name `_field` is undescriptive — it could mean anything. A more precise name: `_session_key_for(question_key)` or `_q_to_field(question_key)`.
+
+`scheduler.py` `booked_slot_ids()` returns a `set[str]`. The name suffix `_ids` conventionally implies a list. Either rename to `booked_slot_id_set()` or change the return type to `list` with `sorted(...)`.
+
+---
+
+#### PQ-L2 · No `__all__` export declarations in any module
+**Raised by:** Code Quality Expert
+
+None of `parser.py`, `scorer.py`, `chat_agent.py`, `dashboard.py`, `db.py`, `llm.py` define `__all__`. This means `from app.parser import *` exports everything including private `_helpers`. Low-risk for an application (not a library), but adding `__all__` to the two most-imported modules (`llm.py`, `db.py`) is a one-line improvement that signals API surface intentionality.
+
+---
+
+#### PQ-L3 · `dossier.py` `build_dossier()` has no parameter docstring; several new `db.py` functions have no docstrings
+**Raised by:** Technical Writer Expert
+
+`dossier.py` has a good module-level docstring. `build_dossier(candidate_id: int, conn) -> dict` has no parameter or return docstring. Functions added in later commits (`add_note()`, `get_notes()`, `add_tag()`, `remove_tag()`, `get_timeline()`, `search_candidates_advanced()`) in `db.py` have no docstrings at all.
+
+Not a runtime issue, but a documentation debt that accumulates quickly.
+
+---
+
+#### PQ-L4 · `archive_job()` appends `[ARCHIVED]` to `client_name` string — fragile semantic hack
+**Raised by:** Code Quality Expert, Database Expert (Panel 1)
+
+`db.py` `archive_job()`:
+```python
+db.execute("UPDATE jobs SET client_name = client_name || ' [ARCHIVED]' WHERE id=?", [job_id])
+```
+Archival state is stored in the `client_name` text field by string concatenation. A job named "Accenture [ARCHIVED]" cannot be un-archived cleanly (would need string stripping). A filter for "show active jobs" becomes `WHERE client_name NOT LIKE '%[ARCHIVED]%'` — extremely fragile. `[ARCHIVED]` also leaks into the MIS Excel export and the frontend job dropdown.
+
+**Fix:**
+```sql
+ALTER TABLE jobs ADD COLUMN archived_at TEXT DEFAULT NULL;
+```
+Filter active jobs: `WHERE archived_at IS NULL`.
+
+---
+
+#### PQ-L5 · `CHAT_WALKTHROUGH.md` is not referenced from README; `DEMO_SCRIPT.md` is referenced but path is wrong
+**Raised by:** Technical Writer Expert
+
+`CHAT_WALKTHROUGH.md` exists in `docs/` and is one of the most useful guides for an evaluator trying the live demo. It is never linked from README.
+
+`README.md` links to `DEMO_SCRIPT.md` as `./DEMO_SCRIPT.md` (root level), but the file is actually at `docs/DEMO_SCRIPT.md`. The link is broken.
+
+**Fix:** Update the README links:
+```markdown
+- [Demo Script](docs/DEMO_SCRIPT.md)
+- [Chat Walkthrough](docs/CHAT_WALKTHROUGH.md)
+```
+
+---
+
+#### PQ-L6 · Type hint `float | None` (PEP 604) in `scorer.py` — Python 3.10+ syntax, README says 3.9+
+**Raised by:** Code Quality Expert, Technical Writer Expert
+
+`scorer.py` uses:
+```python
+def token_overlap(a: str, b: str) -> float | None:
+```
+PEP 604 union syntax (`X | Y`) requires Python ≥ 3.10. README says "Python 3.9+" which would cause a `TypeError` at import time on 3.9. The project also uses `match` statements (`llm.py`) which require 3.10+.
+
+**Fix:** Update README minimum Python to 3.10 (tested on 3.11). Optionally add `python_requires = ">=3.10"` to a `pyproject.toml`.
+
+---
+
+## Panel 3 — Summary Matrix
+
+| ID | Severity | Expert(s) | Effort |
+|---|---|---|---|
+| PQ-B1 | **BLOCKER** | Code Quality / DevOps | Trivial (1 line) |
+| PQ-B2 | **BLOCKER** | Tech Writer / DevOps | Trivial (2 lines) |
+| PQ-H1 | HIGH | Product / Tech Writer | Small (doc-only) |
+| PQ-H2 | HIGH | Product / Security | Small (doc-only) |
+| PQ-H3 | HIGH | Product / Tech Writer | Small (new doc section) |
+| PQ-H4 | HIGH | Tech Writer / DevOps | Small (README edits) |
+| PQ-H5 | HIGH | Product / Backend | Medium (15-min SQL work) |
+| PQ-H6 | HIGH | Tech Writer | Small (regenerate table) |
+| PQ-H7 | HIGH | Code Quality | Trivial (delete 2 fns) |
+| PQ-H8 | HIGH | Code Quality | Trivial (wire or delete) |
+| PQ-M1 | MEDIUM | Code Quality / Backend | Small |
+| PQ-M2 | MEDIUM | Code Quality / Backend | Trivial (1 line each) |
+| PQ-M3 | MEDIUM | Code Quality | Trivial (move constant) |
+| PQ-M4 | MEDIUM | Code Quality / SysDesign | Small (extract constant) |
+| PQ-M5 | MEDIUM | Code Quality | Trivial (move imports) |
+| PQ-M6 | MEDIUM | Code Quality / DB | Small (mirrors B-1) |
+| PQ-M7 | MEDIUM | Code Quality / DB | Small (delete one fn) |
+| PQ-M8 | MEDIUM | Product / Tech Writer | Trivial (add README link) |
+| PQ-M9 | MEDIUM | Tech Writer / LLM | Trivial (update diagram) |
+| PQ-M10 | MEDIUM | Product | Small (map existing fields) |
+| PQ-M11 | MEDIUM | Product / Code Quality | Trivial (add comments) |
+| PQ-L1 | LOW | Code Quality | Trivial |
+| PQ-L2 | LOW | Code Quality | Trivial |
+| PQ-L3 | LOW | Tech Writer | Small |
+| PQ-L4 | LOW | Code Quality / DB | Small |
+| PQ-L5 | LOW | Tech Writer | Trivial |
+| PQ-L6 | LOW | Code Quality / Tech Writer | Trivial |
+
+**Panel 3 totals: 2 BLOCKER · 8 HIGH · 11 MEDIUM · 6 LOW = 27 issues**
+
+---
+
+## Combined Three-Panel Issue Count
+
+| Severity | Panel 1 (Core Build) | Panel 2 (Reliability) | Panel 3 (Product & Comms) | **Grand Total** |
+|---|---|---|---|---|
+| BLOCKER | 3 | 4 | 2 | **9** |
+| HIGH | 9 | 8 | 8 | **25** |
+| MEDIUM | 11 | 10 | 11 | **32** |
+| LOW | 10 | 6 | 6 | **22** |
+| **Total** | **33** | **28** | **27** | **88** |
+
+> **Note:** Some issues appear in multiple panels because they span concerns (e.g., PQ-B1 / D-M1 both flag `requirements.txt`; PQ-M6 / B-1 both flag soft-delete). The grand total above deduplicates by counting each issue in its primary panel only.
+
+---
+
+## What Panel 3 Agrees Is Done Well
+
+- ✅ **`MODULE_4_6_NOTES.md` is genuinely impressive** — Kredily 15-minute polling, TeamLogger HMAC webhook, Tally XML-over-HTTP, CredFlow aging tiers, commission two-stage release. These are specific, plausible, and demonstrate platform knowledge far above intern-project level.
+- ✅ **`docs/DEMO_SCRIPT.md` and `docs/CHAT_WALKTHROUGH.md`** — having canned demo scripts is a professional habit most interns never develop. The Virtuous team can run the demo unguided.
+- ✅ **`docs/ARCHITECTURE.md` data-flow diagram** — clear separation of concerns, request lifecycle shown end-to-end. Needs the multi-LLM label update (PQ-M9) but the structure is correct.
+- ✅ **BRD-F-102 (deduplication), BRD-F-203 (stage transition), BRD-F-301 (4 screening questions), BRD-F-303 (reminders), BRD-F-502 (Excel MIS columns)** — implemented faithfully and the implementation matches the BRD spec in all material respects.
+- ✅ **`KEYS_AND_SETUP.md`** — the clearest onboarding doc in the project. The "how to get each free key" table is exactly what a new team member needs.
+- ✅ **`.editorconfig` and `pytest.ini`** — these are experienced-developer habits. Most intern projects skip both.
+- ✅ **Honest mock labelling in most places** — `mock_calendar.json`, `mock_recruiters.json`, and the "mocked" comments in scheduler.py are clearly marked. The pattern is correct; it just needs to extend to the BRD gap areas flagged in PQ-H1/H2/H3.
+- ✅ **Type hints throughout** — `parser.py`, `scorer.py`, `chat_agent.py` are consistently typed. Not perfect (PQ-L6), but far above average for a prototype.
+
+---
+
+## Unified "Fix It in a Day" Priority List (All Three Panels Combined)
+
+If only one working day is available before submission, fix in this order:
+
+| Priority | ID | Fix | Time |
+|---|---|---|---|
+| 1 | PQ-B1 | Fix malformed `openpyxl` line in `requirements.txt` | 1 min |
+| 2 | PQ-B2 | Remove absolute path from README Quick Start | 2 min |
+| 3 | B-2 (P1) | Sanitize filenames in upload route | 10 min |
+| 4 | S-B1 (P2) | Move to CORS origin whitelist | 5 min |
+| 5 | PQ-H4 | Fix port + add Prerequisites to README | 10 min |
+| 6 | PQ-H1/H2/H3 | Add "Known Scope Gaps" section to README | 20 min |
+| 7 | PQ-M2 | Wire `NoteIn` / `TagIn` Pydantic models | 5 min |
+| 8 | PQ-M5 | Move buried imports to file top | 5 min |
+| 9 | PQ-H7/H8 | Delete dead `has_claude()`, `claude_json()`, `GITHUB_PATTERN` | 5 min |
+| 10 | PQ-L5 | Fix broken README doc links | 2 min |
+| 11 | PQ-M8 | Link `MODULE_4_6_NOTES.md` from README | 1 min |
+| 12 | PQ-M9 | Update ARCHITECTURE.md diagram to show multi-LLM | 5 min |
+| **Total** | | | **~70 min** |
+
+---
+
+*This Panel 3 review section was produced by the simulated Product/Business, Technical Writer, and Code Quality expert personas. All file references, line numbers, and code snippets are drawn from direct inspection of the `talentops-ai/` repository.*
