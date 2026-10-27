@@ -201,3 +201,17 @@ def reset_session(candidate_id: int) -> bool:
         conn.execute("DELETE FROM chat_log WHERE candidate_id = ?", (candidate_id,))
     logger.info(f"Screening session reset for candidate #{candidate_id}")
     return True
+
+
+def get_session_summary(candidate_id: int) -> dict[str, Any]:
+    sess = db.get_session(candidate_id)
+    return {
+        "candidate_id": candidate_id,
+        "is_qualified": bool(sess.get("qualified")),
+        "answers": {
+            "employment": sess.get("employment_status"),
+            "notice": sess.get("notice_actual"),
+            "compensation": sess.get("compensation_notes"),
+            "relocation": sess.get("relocation"),
+        }
+    }
