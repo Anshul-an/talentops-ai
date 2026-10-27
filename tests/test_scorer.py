@@ -60,3 +60,13 @@ def test_location_match_bonus():
     score_match = heuristic_score(cand_match, job, 70.0)["fitment_score"]
     score_no_match = heuristic_score(cand_no_match, job, 70.0)["fitment_score"]
     assert score_match >= score_no_match
+
+
+def test_employment_gap_penalty():
+    from app.scorer import heuristic_score
+    cand_gap = {"full_name": "A", "skills": "python", "career_gap_months": 12}
+    cand_no_gap = {"full_name": "B", "skills": "python", "career_gap_months": 0}
+    job = {"title": "Dev", "jd_text": "Python engineer"}
+    score_gap = heuristic_score(cand_gap, job, 70.0)["fitment_score"]
+    score_no_gap = heuristic_score(cand_no_gap, job, 70.0)["fitment_score"]
+    assert score_no_gap >= score_gap
