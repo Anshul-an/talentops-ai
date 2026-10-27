@@ -613,3 +613,9 @@ def update_job_status(jid: int, is_active: bool) -> bool:
     with connect() as conn:
         cur = conn.execute("UPDATE jobs SET client_name = replace(client_name, ' [INACTIVE]', '') || ? WHERE id = ?", (f" {marker}".strip(), jid))
         return cur.rowcount > 0
+
+
+def unarchive_job(jid: int) -> bool:
+    with connect() as conn:
+        cur = conn.execute("UPDATE jobs SET client_name = replace(client_name, ' [ARCHIVED]', '') WHERE id = ?", (jid,))
+        return cur.rowcount > 0
