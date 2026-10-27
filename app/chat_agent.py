@@ -43,6 +43,7 @@ def _detect_hinglish_or_hindi(msg: str) -> bool:
 
 
 def start_or_continue(candidate_id: int, user_message: str) -> dict[str, Any]:
+    """Process candidate message turn, collect screening criteria, and qualify for interview."""
     if not user_message or not user_message.strip():
         return {"reply": "I did not receive your message. Could you please reply again?", "qualified": False, "captured": {}, "proposed_slots": []}
     cand = db.get_candidate(candidate_id)
