@@ -334,6 +334,12 @@ def get_channel_roi() -> dict:
     return channel_roi()
 
 
+@app.get("/api/dashboard/pipeline-velocity")
+def get_pipeline_velocity() -> dict:
+    from app.dashboard import pipeline_velocity
+    return pipeline_velocity()
+
+
 @app.get("/dashboard/summary")
 @app.get("/api/dashboard/summary")
 def dashboard_summary() -> dict:

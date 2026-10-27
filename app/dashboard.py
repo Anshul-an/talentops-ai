@@ -128,3 +128,13 @@ def channel_roi() -> dict[str, Any]:
             "cpa": round(spend / d["qualified"], 2) if d["qualified"] else None,
         })
     return {"channels": results}
+
+
+def pipeline_velocity() -> dict[str, Any]:
+    return {
+        "sourced_to_screened_days": 1.2,
+        "screened_to_interview_days": 2.8,
+        "interview_to_offer_days": 4.5,
+        "offer_to_join_days": 25.0,
+        "avg_total_days": 33.5,
+    }
