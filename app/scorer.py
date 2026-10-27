@@ -33,6 +33,7 @@ Be calibrated: 85+ is a strong submit, 70-84 is a maybe, below 70 is a no-submit
 
 
 def score_candidate(candidate: dict[str, Any], job: dict[str, Any], threshold: float | None = None) -> dict[str, Any]:
+    """Score a candidate against a job description using LLM or heuristic fallback."""
     cutoff = FITMENT_THRESHOLD if threshold is None else threshold
     if has_llm():
         try:
