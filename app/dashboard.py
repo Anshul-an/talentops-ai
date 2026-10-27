@@ -1,8 +1,12 @@
 import json
+import time
 from typing import Any
 
 from app import db
 from app.config import MOCK_RECRUITERS
+from app.logging_config import get_logger
+
+logger = get_logger("dashboard")
 
 
 def _reminder_counts() -> dict[str, int]:
@@ -14,6 +18,7 @@ def _reminder_counts() -> dict[str, int]:
 
 
 def summary() -> dict[str, Any]:
+    t0 = time.perf_counter()
     candidates = db.list_candidates()
     scores = db.fetchall("SELECT * FROM scores")
     interviews = db.list_interviews()
@@ -62,6 +67,20 @@ def summary() -> dict[str, Any]:
                 "flags": flags,
             }
         )
+
+    elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
+    logger.info(
+        f"Dashboard summary aggregated in {elapsed_ms}ms ({sourced} candidates, {len(interviews)} interviews, {len(jobs)} jobs)",
+        extra={
+            "extra_data": {
+                "elapsed_ms": elapsed_ms,
+                "sourced": sourced,
+                "interviews": len(interviews),
+                "jobs": len(jobs),
+            }
+        },
+    )
+
     return {
         "sourced": sourced,
         "qualified": qualified,
