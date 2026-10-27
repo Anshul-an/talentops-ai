@@ -89,3 +89,10 @@ Python 3.11, FastAPI, SQLite, Anthropic Claude, pandas/openpyxl, vanilla HTML UI
 - [Modules 4 & 6 API map](docs/MODULE_4_6_NOTES.md)
 - [Demo script](docs/DEMO_SCRIPT.md)
 - [Keys and setup](docs/KEYS_AND_SETUP.md)
+
+
+## Enhanced Capabilities
+- **Candidate Search**: Fast substring search across name, skills, company, email.
+- **Recruiter Notes & Tags**: Attach collaboration notes and skill tags directly to candidate profiles.
+- **Pipeline Velocity & Channel ROI**: Live metrics tracking recruitment cycle times and spend per hire.
+- **CSV & Excel Export**: Dual export formats for CRM synchronization and offline analysis.
