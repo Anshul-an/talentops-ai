@@ -42,3 +42,9 @@ def test_spec_paths_match_build_plan():
     with TestClient(app) as client:
         assert client.get("/candidates").status_code == 200
         assert client.get("/dashboard/summary").status_code == 200
+
+
+def test_search_candidate_by_name(client):
+    res = client.get("/api/candidates/search?q=Ananya")
+    assert res.status_code == 200
+    assert "candidates" in res.json()
