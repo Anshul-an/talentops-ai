@@ -76,6 +76,25 @@ def version() -> dict:
     return {"name": "TalentOps AI", "version": "0.1.0", "git_sha": sha}
 
 
+@app.get("/api/health/detailed")
+def detailed_health() -> dict:
+    from app.llm import status as llm_status
+    c_count = (db.fetchone("SELECT count(*) as c FROM candidates") or {}).get("c", 0)
+    j_count = (db.fetchone("SELECT count(*) as c FROM jobs") or {}).get("c", 0)
+    i_count = (db.fetchone("SELECT count(*) as c FROM interviews") or {}).get("c", 0)
+    s_count = (db.fetchone("SELECT count(*) as c FROM scores") or {}).get("c", 0)
+    return {
+        "ok": True,
+        "llm": llm_status(),
+        "database": {
+            "candidates": c_count,
+            "jobs": j_count,
+            "interviews": i_count,
+            "scores": s_count,
+        }
+    }
+
+
 @app.get("/api/health")
 @app.get("/health")
 def health() -> dict:
