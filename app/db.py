@@ -578,3 +578,9 @@ def delete_candidate_note(note_id: int) -> bool:
     with connect() as conn:
         cur = conn.execute("DELETE FROM notes WHERE id = ?", (note_id,))
         return cur.rowcount > 0
+
+
+def delete_candidate_tag(candidate_id: int, tag: str) -> bool:
+    with connect() as conn:
+        cur = conn.execute("DELETE FROM tags WHERE candidate_id = ? AND tag = ?", (candidate_id, tag.strip()))
+        return cur.rowcount > 0
