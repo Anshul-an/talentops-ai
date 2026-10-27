@@ -584,3 +584,10 @@ def delete_candidate_tag(candidate_id: int, tag: str) -> bool:
     with connect() as conn:
         cur = conn.execute("DELETE FROM tags WHERE candidate_id = ? AND tag = ?", (candidate_id, tag.strip()))
         return cur.rowcount > 0
+
+
+def record_timeline_event(candidate_id: int, status: str, note: Optional[str] = None) -> int:
+    return execute(
+        "INSERT INTO timeline (candidate_id, status, note, created_at) VALUES (?, ?, ?, ?)",
+        (candidate_id, status, note or "System update", utcnow()),
+    )
