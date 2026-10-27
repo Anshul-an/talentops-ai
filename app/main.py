@@ -284,6 +284,12 @@ def score(body: ScoreRequest) -> dict:
     return {"scores": out}
 
 
+@app.post("/api/chat/{candidate_id}/reset")
+def reset_chat(candidate_id: int) -> dict:
+    chat_agent.reset_session(candidate_id)
+    return {"candidate_id": candidate_id, "reset": True}
+
+
 @app.post("/chat/{candidate_id}")
 @app.post("/api/chat/{candidate_id}")
 def chat(candidate_id: int, body: ChatIn) -> dict:

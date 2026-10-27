@@ -187,3 +187,11 @@ def _extract_slot(text: str) -> str | None:
 
     m = re.search(r"slot-[a-z0-9-]+", text.lower())
     return m.group(0) if m else None
+
+
+def reset_session(candidate_id: int) -> bool:
+    with db.connect() as conn:
+        conn.execute("DELETE FROM screening_sessions WHERE candidate_id = ?", (candidate_id,))
+        conn.execute("DELETE FROM chat_log WHERE candidate_id = ?", (candidate_id,))
+    logger.info(f"Screening session reset for candidate #{candidate_id}")
+    return True
