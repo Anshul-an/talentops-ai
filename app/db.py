@@ -606,3 +606,10 @@ def get_job_with_stats(jid: int) -> Optional[dict[str, Any]]:
     scores = fetchall("SELECT fitment_score FROM scores WHERE job_id = ?", (jid,))
     avg_score = round(sum(s["fitment_score"] for s in scores) / len(scores), 1) if scores else None
     return {**job, "scored_candidates_count": len(scores), "avg_fitment_score": avg_score}
+
+
+def update_job_status(jid: int, is_active: bool) -> bool:
+    marker = "[INACTIVE]" if not is_active else ""
+    with connect() as conn:
+        cur = conn.execute("UPDATE jobs SET client_name = replace(client_name, ' [INACTIVE]', '') || ? WHERE id = ?", (f" {marker}".strip(), jid))
+        return cur.rowcount > 0
