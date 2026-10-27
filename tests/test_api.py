@@ -79,3 +79,10 @@ def test_bulk_score_api(client):
     res = client.post("/api/score/bulk", json={"job_id": 1, "candidate_ids": [2]})
     assert res.status_code == 200
     assert "scores" in res.json()
+
+
+def test_csv_export_endpoint(client):
+    res = client.get("/api/export/csv")
+    assert res.status_code == 200
+    assert "text/csv" in res.headers["content-type"]
+    assert "ID,Name" in res.text
