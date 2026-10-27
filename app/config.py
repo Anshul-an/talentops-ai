@@ -41,3 +41,5 @@ FRONTEND_DIR = ROOT / "frontend"
 
 SCORER_LOCATION_BONUS = float(os.getenv("SCORER_LOCATION_BONUS", "5.0"))
 SCORER_GAP_PENALTY = float(os.getenv("SCORER_GAP_PENALTY", "8.0"))
+
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
