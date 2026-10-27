@@ -1,3 +1,4 @@
+import time
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -5,23 +6,31 @@ from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.requests import Request
+from starlette.responses import Response as StarletteResponse
 
 from app import chat_agent, db, scheduler
 from app.config import FRONTEND_DIR, SAMPLE_RESUMES, UPLOAD_DIR
 from app.dashboard import summary
 from app.dossier import build_dossier
 from app.excel_export import build_workbook
+from app.logging_config import get_logger
 from app.models import ChatIn, InterviewConfirm, JobIn, ScoreRequest
 from app.parser import parse_resume
 from app.scorer import score_candidate
 from app.seed import seed_if_empty
 
+logger = get_logger("main")
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    logger.info("Starting TalentOps AI service — initializing database")
     db.init_db()
     seed_if_empty()
+    logger.info("TalentOps AI service ready")
     yield
+    logger.info("Shutting down TalentOps AI service")
 
 
 app = FastAPI(
@@ -38,12 +47,33 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.perf_counter()
+    response: StarletteResponse = await call_next(request)
+    duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+    logger.info(
+        f"{request.method} {request.url.path} -> {response.status_code} ({duration_ms}ms)",
+        extra={
+            "extra_data": {
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": response.status_code,
+                "duration_ms": duration_ms,
+            }
+        },
+    )
+    return response
+
+
 @app.get("/api/health")
 @app.get("/health")
 def health() -> dict:
     from app.llm import status as llm_status
 
-    return {"ok": True, **llm_status()}
+    st = llm_status()
+    logger.debug(f"Health check invoked: provider={st.get('provider')}")
+    return {"ok": True, **st}
 
 
 @app.post("/resumes/upload")
@@ -52,6 +82,7 @@ async def upload_resumes(
     files: list[UploadFile] = File(...),
     source_channel: str = Form("Direct upload"),
 ) -> dict:
+    logger.info(f"Upload received for {len(files)} files via channel '{source_channel}'")
     results = []
     for f in files:
         dest = UPLOAD_DIR / (f.filename or "resume.bin")
@@ -59,9 +90,11 @@ async def upload_resumes(
         try:
             parsed = parse_resume(dest, source_channel=source_channel)
         except Exception as exc:
+            logger.error(f"Failed to parse uploaded file {dest.name}: {exc}")
             results.append({"file": dest.name, "error": str(exc)})
             continue
         cid, action = db.upsert_candidate(parsed)
+        logger.info(f"Uploaded resume {dest.name} -> candidate #{cid} ({action})")
         results.append({"file": dest.name, "candidate_id": cid, "action": action, "parsed": db.get_candidate(cid)})
     return {"results": results}
 
@@ -70,6 +103,7 @@ async def upload_resumes(
 def ingest_samples() -> dict:
     files = sorted(p for p in SAMPLE_RESUMES.iterdir() if p.suffix.lower() in {".pdf", ".docx", ".txt"})
     if not files:
+        logger.warning("Ingest samples called but no sample files found on disk")
         raise HTTPException(400, "No sample resumes found. Run: python scripts/generate_samples.py")
     results = []
     channels = ["Naukri", "LinkedIn", "Shine", "Inbound email", "Direct upload"]
@@ -77,13 +111,16 @@ def ingest_samples() -> dict:
         parsed = parse_resume(path, source_channel=channels[i % len(channels)])
         cid, action = db.upsert_candidate(parsed)
         results.append({"file": path.name, "candidate_id": cid, "action": action})
+    logger.info(f"Ingested {len(results)} sample resumes successfully")
     return {"ingested": len(results), "results": results}
 
 
 @app.get("/candidates")
 @app.get("/api/candidates")
 def candidates(status: Optional[str] = None, source: Optional[str] = None) -> dict:
-    return {"candidates": db.list_candidates(status=status, source=source)}
+    cands = db.list_candidates(status=status, source=source)
+    logger.debug(f"Retrieved {len(cands)} candidates (filter status={status}, source={source})")
+    return {"candidates": cands}
 
 
 @app.get("/candidates/{cid}")
@@ -91,6 +128,7 @@ def candidates(status: Optional[str] = None, source: Optional[str] = None) -> di
 def candidate_detail(cid: int) -> dict:
     row = db.get_candidate(cid)
     if not row:
+        logger.warning(f"Candidate #{cid} not found")
         raise HTTPException(404, "Candidate not found")
     scores = db.fetchall("SELECT * FROM scores WHERE candidate_id = ? ORDER BY id DESC", (cid,))
     chats = db.chat_history(cid)
@@ -109,6 +147,7 @@ def list_jobs() -> dict:
 @app.post("/api/jobs")
 def create_job(body: JobIn) -> dict:
     jid = db.insert_job(body.title, body.client_name, body.jd_text)
+    logger.info(f"Created job #{jid} '{body.title}' for client '{body.client_name}'")
     return {"job": db.get_job(jid)}
 
 
@@ -124,6 +163,7 @@ def score(body: ScoreRequest) -> dict:
     else:
         people = db.fetchall("SELECT * FROM candidates")
     out = []
+    logger.info(f"Scoring {len(people)} candidate(s) against job #{body.job_id} ('{job.get('title')}')")
     for cand in people:
         result = score_candidate(cand, job, body.threshold)
         sid = db.insert_score({**result, "candidate_id": cand["id"], "job_id": body.job_id})
