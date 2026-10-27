@@ -70,9 +70,10 @@ function renderChips() {
 
 async function refreshCandidates() {
   const status = $("#statusFilter").value;
+  const searchTerm = ($("#candSearch")?.value || "").toLowerCase().trim();
   const q = status ? `?status=${encodeURIComponent(status)}` : "";
   const data = await api(`/api/candidates${q}`);
-  const rows = data.candidates
+  const rows = data.candidates.filter(c => !searchTerm || (c.full_name && c.full_name.toLowerCase().includes(searchTerm)) || (c.skills && c.skills.toLowerCase().includes(searchTerm)))
     .map(
       (c) => `<tr data-cid="${c.id}">
         <td>${c.id}</td>
@@ -363,3 +364,5 @@ function recruiterTable(rows) {
 }
 
 boot();
+
+$("#candSearch")?.addEventListener("input", () => refreshCandidates());
