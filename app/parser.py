@@ -1,0 +1,212 @@
+import re
+from pathlib import Path
+from typing import Any, Optional
+
+from app.llm import complete_json, has_llm, optional_str
+
+PARSE_SYSTEM = """You extract structured hiring fields from unstructured resumes.
+Return ONLY a JSON object with these keys (use null when unknown):
+full_name, current_location, preferred_location, email, phone, linkedin_url,
+total_experience_years (number), relevant_experience_years (number),
+current_ctc (annual INR lakhs as number, e.g. 18.5), expected_ctc (number),
+notice_period_days (integer), current_company,
+previous_employers (array of strings), skills (array of strings),
+certifications (array of strings), education (short string).
+CTC must be numeric lakhs if possible. Do not invent contact details."""
+
+
+def extract_text(path: Path) -> str:
+    suffix = path.suffix.lower()
+    if suffix == ".pdf":
+        return _pdf_text(path)
+    if suffix in {".docx", ".doc"}:
+        return _docx_text(path)
+    if suffix in {".txt", ".md", ".rtf"}:
+        return path.read_text(encoding="utf-8", errors="ignore")
+    raise ValueError(f"Unsupported resume format: {suffix}")
+
+
+def _pdf_text(path: Path) -> str:
+    from pypdf import PdfReader
+
+    reader = PdfReader(str(path))
+    return "\n".join((page.extract_text() or "") for page in reader.pages)
+
+
+def _docx_text(path: Path) -> str:
+    from docx import Document
+
+    doc = Document(str(path))
+    parts = [p.text for p in doc.paragraphs]
+    for table in doc.tables:
+        for row in table.rows:
+            parts.append(" | ".join(c.text for c in row.cells))
+    return "\n".join(parts)
+
+
+def parse_resume(path: Path, source_channel: str = "Direct upload") -> dict[str, Any]:
+    raw = extract_text(path)
+    if has_llm():
+        try:
+            data, engine = complete_json(PARSE_SYSTEM, f"Resume filename: {path.name}\n\n{raw[:12000]}")
+            parsed = _normalize(data)
+            parsed["parser_engine"] = engine
+            parsed["source_channel"] = source_channel
+            parsed["resume_path"] = str(path)
+            parsed["raw_excerpt"] = raw[:500]
+            return parsed
+        except Exception:
+            parsed = _normalize(heuristic_parse(raw))
+            parsed["parser_engine"] = "heuristic-fallback"
+            parsed["source_channel"] = source_channel
+            parsed["resume_path"] = str(path)
+            return parsed
+    parsed = _normalize(heuristic_parse(raw))
+    parsed["parser_engine"] = "heuristic"
+    parsed["source_channel"] = source_channel
+    parsed["resume_path"] = str(path)
+    return parsed
+
+
+def heuristic_parse(raw: str) -> dict[str, Any]:
+    email = _first(re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", raw))
+    phone = _first(
+        re.findall(r"(?:\+91[\s-]?)?[6-9](?:[\s-]?\d){9}", raw)
+    )
+    linkedin = _first(re.findall(r"https?://(?:www\.)?linkedin\.com/in/[A-Za-z0-9\-_/]+", raw, re.I))
+    lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+    name = None
+    for ln in lines[:8]:
+        if email and email in ln:
+            continue
+        if re.search(r"resume|curriculum|profile|objective|location:|skills:|experience:|notice:|company:", ln, re.I):
+            continue
+        if ":" in ln:
+            continue
+        words = [w for w in re.split(r"\s+", ln) if w]
+        if 2 <= len(words) <= 4 and not re.search(r"\d", ln) and len(ln) < 40:
+            name = ln.title() if ln.isupper() else ln
+            break
+    exp = _number(
+        raw,
+        [
+            r"total experience[:\s]+(\d+(?:\.\d+)?)\s*(?:years|yrs)",
+            r"(\d+(?:\.\d+)?)\s*(?:years|yrs)\s+(?:of )?experience",
+        ],
+    )
+    ctc = _lakhs(raw, r"current (?:ctc|compensation)[:\s]+₹?\s*(\d+(?:\.\d+)?)")
+    ectc = _lakhs(raw, r"expected (?:ctc|compensation)[:\s]+₹?\s*(\d+(?:\.\d+)?)")
+    notice = _int(
+        raw,
+        [
+            r"notice period[:\s]+(\d+)\s*(?:days|day)",
+            r"notice[:\s]+(\d+)\s*(?:days|day)",
+        ],
+    )
+    loc = _capture(raw, r"current location[:\s]+([A-Za-z .]+)")
+    pref = _capture(raw, r"preferred location[:\s]+([A-Za-z .,/]+)")
+    company = _capture(raw, r"current company[:\s]+([^\n]+)")
+    skills_block = _capture_block(raw, r"skills[:\s]+([^\n]+(?:\n[^\n]+){0,4})")
+    skills = []
+    if skills_block:
+        skills = [s.strip() for s in re.split(r"[,•|/]", skills_block) if 1 < len(s.strip()) < 40][:20]
+    education = _capture(raw, r"education[:\s]+([^\n]+)")
+    previous = re.findall(r"(?:previous employers|worked at)[:\s]+([^\n]+)", raw, re.I)
+    return {
+        "full_name": name,
+        "current_location": loc,
+        "preferred_location": pref,
+        "email": email,
+        "phone": phone,
+        "linkedin_url": linkedin,
+        "total_experience_years": exp,
+        "relevant_experience_years": exp,
+        "current_ctc": ctc,
+        "expected_ctc": ectc,
+        "notice_period_days": notice,
+        "current_company": company,
+        "previous_employers": previous[0] if previous else None,
+        "skills": skills,
+        "certifications": [],
+        "education": education,
+    }
+
+
+def _normalize(data: dict[str, Any]) -> dict[str, Any]:
+    prev = data.get("previous_employers")
+    skills = data.get("skills")
+    certs = data.get("certifications")
+    return {
+        "full_name": optional_str(data.get("full_name")),
+        "current_location": optional_str(data.get("current_location")),
+        "preferred_location": optional_str(data.get("preferred_location")),
+        "email": optional_str(data.get("email")),
+        "phone": optional_str(data.get("phone")),
+        "linkedin_url": optional_str(data.get("linkedin_url")),
+        "total_experience_years": _to_float(data.get("total_experience_years")),
+        "relevant_experience_years": _to_float(data.get("relevant_experience_years")),
+        "current_ctc": _to_float(data.get("current_ctc")),
+        "expected_ctc": _to_float(data.get("expected_ctc")),
+        "notice_period_days": _to_int(data.get("notice_period_days")),
+        "current_company": optional_str(data.get("current_company")),
+        "previous_employers": _join(prev),
+        "skills": _join(skills),
+        "certifications": _join(certs),
+        "education": optional_str(data.get("education")),
+    }
+
+
+def _join(val: Any) -> Optional[str]:
+    if val is None:
+        return None
+    if isinstance(val, list):
+        return ", ".join(str(x).strip() for x in val if str(x).strip())
+    return optional_str(val)
+
+
+def _to_float(val: Any) -> Optional[float]:
+    if val is None or val == "":
+        return None
+    try:
+        return float(re.sub(r"[^\d.]", "", str(val)) or 0) or None
+    except ValueError:
+        return None
+
+
+def _to_int(val: Any) -> Optional[int]:
+    f = _to_float(val)
+    return int(f) if f is not None else None
+
+
+def _first(items: list[str]) -> Optional[str]:
+    return items[0] if items else None
+
+
+def _number(raw: str, patterns: list[str]) -> Optional[float]:
+    for p in patterns:
+        m = re.search(p, raw, re.I)
+        if m:
+            return float(m.group(1))
+    return None
+
+
+def _int(raw: str, patterns: list[str]) -> Optional[int]:
+    n = _number(raw, patterns)
+    return int(n) if n is not None else None
+
+
+def _lakhs(raw: str, pattern: str) -> Optional[float]:
+    m = re.search(pattern, raw, re.I)
+    if not m:
+        m = re.search(r"₹\s*(\d+(?:\.\d+)?)\s*L", raw, re.I)
+    return float(m.group(1)) if m else None
+
+
+def _capture(raw: str, pattern: str) -> Optional[str]:
+    m = re.search(pattern, raw, re.I)
+    return m.group(1).strip() if m else None
+
+
+def _capture_block(raw: str, pattern: str) -> Optional[str]:
+    m = re.search(pattern, raw, re.I)
+    return m.group(1).strip() if m else None
