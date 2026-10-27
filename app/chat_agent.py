@@ -32,6 +32,11 @@ Return ONLY JSON:
 }"""
 
 
+def _detect_hinglish_or_hindi(msg: str) -> bool:
+    hindi_keywords = ["haan", "nahi", "accha", "kya", "theek", "bhai", "namaste", "dhanyawad"]
+    return any(w in msg.lower().split() for w in hindi_keywords)
+
+
 def start_or_continue(candidate_id: int, user_message: str) -> dict[str, Any]:
     cand = db.get_candidate(candidate_id)
     if not cand:
