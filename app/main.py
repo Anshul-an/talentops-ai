@@ -154,6 +154,15 @@ def update_candidate_status(cid: int, payload: dict) -> dict:
     return {"candidate_id": cid, "status": status, "updated": True}
 
 
+@app.delete("/api/candidates/{cid}")
+def delete_candidate(cid: int) -> dict:
+    ok = db.soft_delete_candidate(cid)
+    if not ok:
+        raise HTTPException(404, "Candidate not found")
+    logger.info(f"Candidate #{cid} soft-deleted")
+    return {"candidate_id": cid, "deleted": True}
+
+
 @app.get("/candidates/{cid}")
 @app.get("/api/candidates/{cid}")
 def candidate_detail(cid: int) -> dict:

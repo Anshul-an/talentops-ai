@@ -493,3 +493,9 @@ def update_candidate_status(candidate_id: int, status: str, note: Optional[str] 
     execute("INSERT INTO timeline (candidate_id, status, note, created_at) VALUES (?, ?, ?, ?)",
             (candidate_id, status, note or "Manual status update", utcnow()))
     logger.info(f"Updated candidate #{candidate_id} status to '{status}'")
+
+
+def soft_delete_candidate(candidate_id: int) -> bool:
+    with connect() as conn:
+        cur = conn.execute("UPDATE candidates SET parser_engine = 'deleted' WHERE id = ?", (candidate_id,))
+        return cur.rowcount > 0
