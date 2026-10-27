@@ -550,3 +550,25 @@ def archive_job(jid: int) -> bool:
     with connect() as conn:
         cur = conn.execute("UPDATE jobs SET client_name = client_name || ' [ARCHIVED]' WHERE id = ?", (jid,))
         return cur.rowcount > 0
+
+
+def search_candidates_advanced(terms: list[str]) -> list[dict[str, Any]]:
+    """Search candidates matching all or any terms across full name, skills, and current company."""
+    if not terms:
+        return list_candidates()
+    clauses = []
+    params = []
+    for term in terms:
+        t = f"%{term.strip()}%"
+        clauses.append("(c.full_name LIKE ? OR c.skills LIKE ? OR c.current_company LIKE ?)")
+        params.extend([t, t, t])
+    sql = f"""
+    SELECT c.*, s.fitment_score AS latest_score, s.status AS latest_status
+    FROM candidates c
+    LEFT JOIN scores s ON s.id = (
+        SELECT id FROM scores WHERE candidate_id = c.id ORDER BY id DESC LIMIT 1
+    )
+    WHERE {' AND '.join(clauses)}
+    ORDER BY c.id DESC
+    """
+    return fetchall(sql, tuple(params))
