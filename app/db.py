@@ -474,3 +474,12 @@ def search_candidates(query: str) -> list[dict[str, Any]]:
     ORDER BY c.id DESC
     """
     return fetchall(sql, (q, q, q, q))
+
+
+def add_candidate_note(candidate_id: int, note: str, author: str = "Recruiter") -> int:
+    nid = execute(
+        "INSERT INTO notes (candidate_id, note, author, created_at) VALUES (?, ?, ?, ?)",
+        (candidate_id, note.strip(), author.strip(), utcnow()),
+    )
+    logger.info(f"Added note #{nid} for candidate #{candidate_id} by {author}")
+    return nid

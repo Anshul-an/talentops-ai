@@ -130,6 +130,16 @@ def search_candidates(q: str = Query(..., min_length=1)) -> dict:
     return {"query": q, "count": len(results), "candidates": results}
 
 
+@app.post("/api/candidates/{cid}/notes")
+def add_note(cid: int, payload: dict) -> dict:
+    note = payload.get("note") or payload.get("text", "")
+    author = payload.get("author", "Recruiter")
+    if not note.strip():
+        raise HTTPException(400, "Note text cannot be empty")
+    nid = db.add_candidate_note(cid, note, author)
+    return {"id": nid, "candidate_id": cid, "note": note, "author": author}
+
+
 @app.get("/candidates/{cid}")
 @app.get("/api/candidates/{cid}")
 def candidate_detail(cid: int) -> dict:
