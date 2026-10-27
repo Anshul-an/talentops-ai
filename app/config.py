@@ -43,3 +43,5 @@ SCORER_LOCATION_BONUS = float(os.getenv("SCORER_LOCATION_BONUS", "5.0"))
 SCORER_GAP_PENALTY = float(os.getenv("SCORER_GAP_PENALTY", "8.0"))
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
+MAX_UPLOAD_SIZE_MB = int(os.getenv("MAX_UPLOAD_SIZE_MB", "15"))
